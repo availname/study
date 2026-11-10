@@ -41,6 +41,7 @@
   redis/stage5-类型场景实战 / java-core/06-设计模式 / 07-网络基础
   mq-mall + community 推 GitHub（配 GitHub Actions CI）
   面试前：java-core/面试速查手册 + 简历项目话术 + 面试反问与Offer沟通
+  安全补强：java-core/19-登录态与接口安全（两个项目登录态的生产升级地图）
 ```
 
 ## 目录索引
@@ -53,7 +54,7 @@
 | `stage7-AI应用开发/` | LLM全景/Spring AI流式/RAG/RAG进阶/AI工程化/AI工作流与Agent/MCP/AI安全评测/**微调选型(LoRA)/多模态** | [README](stage7-AI应用开发/README.md) |
 | `community/` | **总毕业项目**（四件套联动的社区论坛） | [README](community/README.md) |
 | `learn-center/` | **终极整合项目**：在线学习平台（MyBatis-Plus + 限量抢课秒杀 + 超时取消延迟链 + 签到/榜单/UV + 刷题错题本） | [README](learn-center/README.md) |
-| `java-core/` | Java 后端核心 50+ 篇（并发/JVM/MySQL/Spring/微服务/设计模式/网络/Git/**系统设计 7 题/接口设计/日志规范/OS 基础**）+ **面试速查手册** + **模拟面试追问链** + **简历项目话术** + **面试反问与Offer沟通** | [README](java-core/README.md) |
+| `java-core/` | Java 后端核心 50+ 篇（并发/JVM/MySQL/Spring/微服务/设计模式/网络/Git/**系统设计 7 题/接口设计/日志规范/OS 基础/登录态与接口安全**）+ **面试速查手册** + **模拟面试追问链** + **简历项目话术** + **面试反问与Offer沟通** | [README](java-core/README.md) |
 | `diagrams/` | 23 个交互示意图（🐣 生活比喻版 + 🔧 技术版） | [README](diagrams/README.md) |
 | `mq/踩坑实录-完整复盘.md` | 12 个真实坑（现象→排查→根因→修复→教训） | [直接看](mq/踩坑实录-完整复盘.md) |
 | `learn-center/README.md` | learn-center 运行/API/知识融合映射 | [直接看](learn-center/README.md) |

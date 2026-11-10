@@ -106,8 +106,8 @@ curl "http://localhost:8084/api/admin/stats"
 
 | 简化 | 生产 |
 |------|------|
-| token=UUID+Redis | JWT 无状态 + 刷新令牌 |
-| MD5 密码 | BCrypt |
+| token=UUID+Redis | JWT 无状态 + 刷新令牌（**对比分析与升级地图：[java-core/19-登录态与接口安全](../java-core/19-登录态与接口安全.md)**） |
+| MD5 密码 | BCrypt（同上 19 篇·第四节） |
 | 抢课异步建单无本地消息表 | MQ 挂了单据丢失 → 补本地消息表（可从 community/mq-mall 复制 ReliableMessagePublisher 全套） |
 | 看门狗锁是单机 Redis 锁 | 多节点部署换 RedLock 或按 r-stage3/05 上 fencing token 对账 |
 | 单库 | 分库分表见 MySQL 06 篇 |

@@ -114,9 +114,9 @@ curl 中文参数一律 `--data-urlencode`（否则 Tomcat 400）。
 
 | 简化 | 生产 |
 |------|------|
-| token 直接当参数 | JWT + 拦截器/网关鉴权 |
+| token 直接当参数 | Authorization 头 + 拦截器/网关鉴权（**升级地图：[java-core/19-登录态与接口安全](../java-core/19-登录态与接口安全.md)**——对比 learn-center 的拦截器实现） |
 | 关注关系只存 Redis | DB 主存 + Redis 加速 + 对账 |
 | 阅读不去重 | 按"用户+帖子"Bitmap/Set 去重 |
 | Feed 全推模式 | 推拉结合（大V拉，stage5/03） |
-| 密码 MD5 | BCrypt |
+| 密码 MD5 | BCrypt（19 篇·第四节） |
 | 单实例 | 多实例时登录态/锁/计数天然跨实例（Redis 的价值所在） |

@@ -122,7 +122,24 @@ const COURSES = [
       { name:"stage4-高并发实战", base:"../mq/stage4-高并发实战/", lessons:[
         ["01-削峰填谷-秒杀系统","削峰填谷：秒杀系统（漏斗动画）"],
         ["02-订单超时自动取消","订单超时自动取消"],
-        ["03-综合案例-大促订单链路","综合案例：大促订单链路"]]}
+        ["03-综合案例-大促订单链路","综合案例：大促订单链路"]]},
+      { name:"stage5-Kafka专篇", base:"../mq/stage5-Kafka专篇/", lessons:[
+        ["01-Kafka架构与核心概念","Kafka 架构与核心概念"],
+        ["02-生产者可靠性-acks与幂等事务","生产者可靠性：acks/幂等/事务"],
+        ["03-消费者组位移提交与Rebalance","消费者组：位移提交与 Rebalance"],
+        ["04-Kafka与RabbitMQ选型对比","Kafka vs RabbitMQ 选型对比"],
+        ["05-Kafka高性能读写原理","Kafka 高性能读写原理（快动画）"]]},
+      { name:"stage5-真实场景-视频平台", base:"../mq/stage5-真实场景-视频平台/", lessons:[
+        ["01-场景与架构总览","视频平台：场景与架构总览"],
+        ["02-上传与转码流水线-管道模式","上传与转码流水线（管道模式）"],
+        ["03-审核卡点与发布广播-fanout实战","审核卡点与发布广播（fanout 实战）"],
+        ["04-失败语义与场景方法论","失败语义与场景方法论"]]},
+      { name:"stage6-RocketMQ专篇", base:"../mq/stage6-RocketMQ专篇/", lessons:[
+        ["01-RocketMQ架构与事务消息","RocketMQ 架构与事务消息"],
+        ["02-RocketMQ消费模式与重试","RocketMQ 消费模式与重试"]]},
+      { name:"专题与复盘", base:"../mq/", lessons:[
+        ["延迟任务方案横向对比","延迟任务方案横向对比（专题）"],
+        ["踩坑实录-完整复盘","踩坑实录：12 个真实坑复盘"]]}
     ]},
   { id:"redis", name:"Redis（redis/）", icon:"⚡", color:"orange",
     mods:[
@@ -142,7 +159,8 @@ const COURSES = [
         ["01-缓存穿透击穿雪崩","缓存三大天劫（奶茶店动画）"],
         ["02-缓存与数据库一致性","缓存与数据库一致性"],
         ["03-分布式锁","分布式锁（储物柜动画）"],
-        ["04-大Key与热Key","大 Key 与热 Key"]]},
+        ["04-大Key与热Key","大 Key 与热 Key"],
+        ["05-RedLock争议与FencingToken","RedLock 论战与 Fencing Token（辩论动画）"]]},
       { name:"stage4-高并发实战", base:"../redis/stage4-高并发实战/", lessons:[
         ["01-秒杀库存与Lua原子操作","秒杀库存与 Lua 原子操作"],
         ["02-排行榜签到与UV统计","排行榜、签到与 UV 统计"],
@@ -164,7 +182,8 @@ const COURSES = [
         ["01-集合框架","集合框架（ArrayList/HashMap 真相）"],
         ["02-泛型反射与注解","泛型、反射与注解（Spring 根基）"],
         ["03-Stream与Lambda","Stream 与 Lambda"],
-        ["04-异常体系与最佳实践","异常体系与最佳实践"]]},
+        ["04-异常体系与最佳实践","异常体系与最佳实践"],
+        ["05-String与对象相等性","String 与对象相等性"]]},
       { name:"01-并发编程", base:"../java-core/01-并发编程/", lessons:[
         ["01-线程基础与生命周期","线程基础与生命周期（状态机动画）"],
         ["02-synchronized与锁原理","synchronized 与锁升级"],
@@ -199,19 +218,46 @@ const COURSES = [
         ["03-OpenFeign","OpenFeign 与重试陷阱"],
         ["04-Gateway网关","Gateway 网关"],
         ["05-Sentinel熔断限流","Sentinel 熔断限流"],
-        ["06-Seata分布式事务","Seata 分布式事务"]]},
+        ["06-Seata分布式事务","Seata 分布式事务"],
+        ["07-XXL-Job分布式任务调度","XXL-Job 分布式任务调度"]]},
       { name:"06-设计模式", base:"../java-core/06-设计模式/", lessons:[
         ["01-创建型：单例工厂建造者","创建型：单例/工厂/建造者"],
         ["02-结构型：代理装饰门面适配器","结构型：代理/装饰/门面/适配器"],
         ["03-行为型：策略模板观察者","行为型：策略/模板/观察者"],
-        ["04-SOLID原则与实战组合","SOLID 原则与秒杀模式复盘"]]},
+        ["04-SOLID原则与实战组合","SOLID 原则与秒杀模式复盘"],
+        ["05-责任链与状态机","责任链与状态机（支付/审核实战）"]]},
       { name:"07-网络基础", base:"../java-core/07-网络基础/", lessons:[
         ["01-TCP三次握手四次挥手","TCP 握手挥手（接电话动画）"],
         ["02-HTTP协议演进与HTTPS","HTTP 演进与 HTTPS（寄快递动画）"],
         ["03-IO模型演进","IO 模型演进（epoll）"],
-        ["04-网络实战排查","网络实战排查"]]},
+        ["04-网络实战排查","网络实战排查"],
+        ["05-Netty入门","Netty 入门"]]},
       { name:"08-Git与协作", base:"../java-core/08-Git与协作.md", single:true, lessons:[
-        ["08-Git与协作","Git 实战工作流与协作"]]}
+        ["08-Git与协作","Git 实战工作流与协作"]]},
+      { name:"09-测试与MyBatis", base:"../java-core/09-测试与MyBatis/", lessons:[
+        ["01-JUnit5与Mockito单元测试","JUnit5 与 Mockito 单元测试"],
+        ["02-MyBatis快速上手","MyBatis 快速上手"],
+        ["03-单元测试实战复盘","单元测试实战复盘（28 用例落地）"]]},
+      { name:"13-运维部署实战", base:"../java-core/13-运维部署实战/", lessons:[
+        ["01-Docker入门与容器化部署","Docker 入门与容器化部署"],
+        ["02-Linux排查命令速查","Linux 排查命令速查"],
+        ["03-上线部署Checklist","上线部署 Checklist"],
+        ["04-监控告警与Metrics","监控告警与 Metrics"]]},
+      { name:"单篇专题（就业向）", base:"../java-core/", lessons:[
+        ["10-Java新特性盘点","Java 新特性盘点（8→21）"],
+        ["11-分布式系统基础","分布式系统基础（CAP/一致性哈希）"],
+        ["12-系统设计三题","系统设计三题：短链/扫码登录/限流"],
+        ["14-系统设计进阶三题","系统设计进阶：点赞/红包/推送"],
+        ["15-系统设计·支付系统","系统设计·支付系统（mq-mall 期末考）"],
+        ["16-接口设计规范","接口设计规范"],
+        ["17-日志规范","日志规范（写给凌晨 3 点的你）"],
+        ["18-操作系统基础","操作系统基础（OS 本体收拢）"],
+        ["19-登录态与接口安全","登录态与接口安全（JWT/越权/重放）"]]},
+      { name:"就业冲刺", base:"../java-core/", lessons:[
+        ["面试速查手册","面试速查手册（全模块高频题）"],
+        ["模拟面试追问链","模拟面试追问链（13 条深挖链）"],
+        ["简历项目话术","简历项目话术"],
+        ["面试反问与Offer沟通","面试反问与 Offer 沟通"]]}
     ]},
   { id:"s6", name:"新技术专题（stage6/）", icon:"🚀", color:"orange",
     mods:[
@@ -227,15 +273,17 @@ const COURSES = [
     ]},
   { id:"s7", name:"AI 应用开发（stage7/）", icon:"🤖", color:"orange",
     mods:[
-      { name:"AI 应用开发 8 篇", base:"../stage7-AI应用开发/", lessons:[
+      { name:"AI 应用开发 10 篇", base:"../stage7-AI应用开发/", lessons:[
         ["01-LLM应用开发全景","LLM 应用开发全景"],
         ["02-SpringAI与流式输出","Spring AI 与流式输出"],
         ["03-RAG与向量检索","RAG 与向量检索"],
-        ["04-AI工程化-成本降级与评测","AI 工程化：成本降级与评测"],
+        ["04-AI工程化与learn-center落地","AI 工程化：learn-center 落地"],
         ["05-RAG进阶六种升级","RAG 进阶六种升级"],
         ["06-AI工作流与Agent","AI 工作流与 Agent"],
         ["07-MCP协议与AI工具生态","MCP 协议与 AI 工具生态"],
-        ["08-AI安全与评测","AI 安全与评测"]]}
+        ["08-AI安全与评测","AI 安全与评测"],
+        ["09-AI微调与选型","AI 微调与选型（LoRA）"],
+        ["10-多模态应用","多模态应用"]]}
     ]},
   { id:"proj", name:"项目与复盘", icon:"🏗️", color:"green",
     mods:[
@@ -243,8 +291,19 @@ const COURSES = [
         ["README","mq-mall README（架构+API+教程对照）"]]},
       { name:"community 项目", base:"../community/", lessons:[
         ["README","community README（架构+API+对照）"]]},
+      { name:"learn-center 项目", base:"../learn-center/", lessons:[
+        ["README","learn-center README（在线学习平台：抢课/打卡/榜单/错题本）"]]},
       { name:"踩坑实录", base:"../mq/", lessons:[
         ["踩坑实录-完整复盘","踩坑实录：12 个真实坑完整复盘"]]}
+    ]},
+  { id:"vue", name:"前端学习（Vue/）", icon:"🎨", color:"green",
+    mods:[
+      { name:"01-HTML学习", base:"../Vue/01-HTML学习/", lessons:[
+        ["HTML学习笔记","HTML 学习笔记（含 html.html 实操）"]]},
+      { name:"02-JavaScript学习", base:"../Vue/02-JavaScript学习/", lessons:[
+        ["JavaScript学习笔记","JavaScript 学习笔记（含 javascript.html 实操）"]]},
+      { name:"03-Vue学习", base:"../Vue/03-Vue学习/", lessons:[
+        ["Vue学习笔记","Vue 学习笔记"]]}
     ]}
 ];
 
@@ -361,7 +420,7 @@ const CHECKS = [
   "community 全 API 路线走通（README 十一步）",
   "diagrams 23 个示意图全部点开玩过一遍",
   "两个项目各写一段简历描述（见简历话术）并能答出追问",
-  "模拟面试 12 条追问链全部无卡壳讲完",
+  "模拟面试 13 条追问链全部无卡壳讲完",
   "面试速查手册过三遍，每题能口述 60 秒"
 ];
 
@@ -441,7 +500,7 @@ function renderCourses(){
         const done = LS.done().has(key);
         html += `<div class="lesson">
           <input type="checkbox" class="cb" ${done?"checked":""} onchange="toggleDone('${key}')">
-          <a href="${m.base}${l[0]}.md">${l[1]}</a>
+          <a href="${m.base}${(m.single||m.base.endsWith('.md'))?'':l[0]+'.md'}">${l[1]}</a>
           ${done?pill("✓ 完成","green"):pill("未完成","blue")}
         </div>`;
       });

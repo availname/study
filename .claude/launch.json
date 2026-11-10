@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "study-app",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8931", "--directory", "diagrams"],
+      "port": 8931,
+      "url": "http://localhost:8931/study-app.html"
+    }
+  ]
+}

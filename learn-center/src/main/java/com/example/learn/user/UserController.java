@@ -15,7 +15,7 @@ import java.util.UUID;
 /**
  * 用户模块：注册/登录（Redis token 登录态，7 天 TTL）。
  * 拦截器统一鉴权：token → userId 放入 UserContext（ThreadLocal）。
- * 生产升级方向：JWT 无状态 token（教学 README 扩展）。
+ * 生产升级方向：JWT 无状态 token（对比分析与三解法：java-core/19-登录态与接口安全）。
  */
 @RestController
 @RequestMapping("/api/auth")
