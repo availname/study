@@ -1,0 +1,48 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mq-mall-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: mq_mall
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"          # 非 3306：避免与本地已有 MySQL 冲突
+    volumes:
+      - mq-mall-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: mq-mall-redis
+    ports:
+      - "6380:6379"          # 非 6379：避免冲突
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: mq-mall-rabbitmq
+    ports:
+      - "5673:5672"          # AMQP，非 5672：教学 demo 用的 5672 保持独立
+      - "15673:15672"        # 管理界面 http://localhost:15673
+    volumes:
+      - mq-mall-rabbit-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+volumes:
+  mq-mall-mysql-data:
+  mq-mall-rabbit-data:

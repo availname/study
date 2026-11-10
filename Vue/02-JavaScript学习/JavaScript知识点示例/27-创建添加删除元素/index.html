@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>创建、添加和删除元素</title>
+</head>
+<body>
+  <h1>创建、添加和删除元素</h1>
+  <input id="item-input" type="text" value="新知识" />
+  <button id="add-button" type="button">添加列表项</button>
+  <button id="remove-button" type="button">删除最后一项</button>
+  <p id="output"></p>
+  <ul id="item-list"><li>已有内容</li></ul>
+
+  <script>
+    const input = document.querySelector('#item-input')
+    const list = document.querySelector('#item-list')
+    const output = document.querySelector('#output')
+
+    document.querySelector('#add-button').addEventListener('click', () => {
+      const itemText = input.value.trim()
+
+      if (itemText === '') {
+        output.textContent = '请输入列表内容。'
+        return
+      }
+
+      const item = document.createElement('li')
+      item.textContent = itemText
+      list.appendChild(item)
+      output.textContent = 'createElement() 创建并 appendChild() 添加成功。'
+    })
+
+    document.querySelector('#remove-button').addEventListener('click', () => {
+      const lastItem = list.lastElementChild
+
+      if (lastItem !== null) {
+        lastItem.remove()
+        output.textContent = 'lastElementChild 找到最后一项，remove() 删除成功。'
+      } else {
+        output.textContent = '没有可以删除的列表项。'
+      }
+    })
+  </script>
+</body>
+</html>

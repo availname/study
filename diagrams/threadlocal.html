@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>ThreadLocal · 更衣柜比喻（容易看懂版）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #fdf4ff; color: #1e293b; padding: 30px; }
+  h1 { color: #7e22ce; font-size: 24px; }
+  .sub { color: #9333ea; opacity: .85; font-size: 14px; margin-bottom: 18px; }
+  .identity { margin-bottom: 16px; }
+  .identity span { color: #7e22ce; font-size: 13px; margin-right: 8px; }
+  .identity button { background: #f3e8ff; color: #6b21a8; border: 2px solid #e9d5ff; border-radius: 20px;
+                     padding: 8px 18px; font-size: 13px; cursor: pointer; margin-right: 6px; }
+  .identity button.on { background: #7e22ce; color: #fff; border-color: #7e22ce; }
+  .lockers { display: flex; gap: 16px; margin-bottom: 18px; }
+  .locker { flex: 1; background: #fff; border-radius: 14px; border: 2px solid #e9d5ff; padding: 14px; text-align: center; }
+  .locker.now { border-color: #a855f7; box-shadow: 0 0 16px #a855f755; }
+  .locker .face { font-size: 34px; }
+  .locker b { color: #7e22ce; display: block; margin: 4px 0; }
+  .locker .content { min-height: 52px; background: #faf5ff; border-radius: 10px; padding: 8px;
+                     font-size: 13px; color: #7e22ce; word-break: break-all; }
+  .ops { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+  .ops input { flex: 1; min-width: 200px; background: #fff; border: 2px solid #e9d5ff; border-radius: 10px;
+               padding: 10px 14px; font-size: 14px; color: #6b21a8; }
+  .ops button { background: #7e22ce; color: #fff; border: none; border-radius: 10px; padding: 10px 18px;
+                font-size: 14px; cursor: pointer; }
+  .ops button.warn { background: #dc2626; }
+  .log { background: #fff; border: 1px solid #e9d5ff; border-radius: 12px; padding: 12px;
+         font-size: 13px; color: #6b21a8; min-height: 130px; }
+  .log div { padding: 2px 0; }
+  .log .r { color: #dc2626; } .log .g { color: #059669; }
+  .note { margin-top: 14px; background: #fefce8; border: 2px dashed #fde047; border-radius: 12px;
+          padding: 14px 18px; font-size: 13.5px; color: #713f12; line-height: 1.9; }
+  .note b { color: #a16207; }
+</style>
+</head>
+<body>
+<h1>🧵 ThreadLocal = 健身房的更衣柜</h1>
+<div class="sub">Java 并发 07 · 每个线程一个专属柜子——你的东西放你的柜子，别人拿不到也看不见（线程隔离）</div>
+
+<div class="identity">
+  <span>当前身份（模拟不同线程）：</span>
+  <button id="t0" class="on" onclick="setMe(0)">🧵 线程1</button>
+  <button id="t1" onclick="setMe(1)">🧵 线程2</button>
+  <button id="t2" onclick="setMe(2)">🧵 线程3</button>
+</div>
+
+<div class="lockers">
+  <div class="locker" id="lk0"><div class="face">🚪</div><b>线程1 的柜子</b><div class="content" id="c0">（空的）</div></div>
+  <div class="locker" id="lk1"><div class="face">🚪</div><b>线程2 的柜子</b><div class="content" id="c1">（空的）</div></div>
+  <div class="locker" id="lk2"><div class="face">🚪</div><b>线程3 的柜子</b><div class="content" id="c2">（空的）</div></div>
+</div>
+
+<div class="ops">
+  <input id="item" placeholder="输入要放的东西，如：登录用户张三">
+  <button onclick="put()">📥 放入我的柜子 (set)</button>
+  <button onclick="get()">📤 从我的柜子取 (get)</button>
+  <button class="warn" onclick="clearMine()">🗑️ 清空我的柜子 (remove)</button>
+</div>
+
+<div class="log" id="logEl"></div>
+
+<div class="note">
+  💡 <b>原理与两个大坑</b>：<br>
+  ① <b>结构</b>：每个 Thread 对象里有一张表（ThreadLocalMap），key=ThreadLocal 实例（<b>弱引用</b>），value=你放的东西<br>
+  ② <b>内存泄漏</b>：线程池的线程<b>永不死</b>——你不 remove，东西就在柜子里放一年（泄漏）。规约：<b>用完必须 remove()</b>（finally 里）<br>
+  ③ <b>跨线程失效</b>：你的柜子只有你能开——<b>异步切线程后取不到</b>（要传上下文用 MQ 头/ScopedValue）。与虚拟线程组合时注意内存放大（并发篇 07）
+</div>
+
+<script>
+"use strict";
+let me = 0;
+const lockers = [[], [], []];    // 每个线程柜子的物品列表
+let logs = [];
+
+function $(id){ return document.getElementById(id); }
+function addLog(t, cls){
+  logs.unshift({ t, cls }); logs = logs.slice(0, 10);
+  $("logEl").innerHTML = logs.map(l => `<div class="${l.cls||''}">${l.t}</div>`).join("");
+}
+function setMe(n){
+  me = n;
+  [0,1,2].forEach(i => $("t"+i).classList.toggle("on", i===n));
+  [0,1,2].forEach(i => $("lk"+i).classList.toggle("now", i===n));
+  addLog(`你现在是 <b>线程${me+1}</b>——只能操作自己的柜子`);
+}
+function put(){
+  const item = $("item").value.trim() || ("物品" + (Math.floor(Math.random()*90)+10));
+  lockers[me].unshift(item);
+  addLog(`线程${me+1} set(“${item}”) → 放入自己的柜子`, "g");
+  render();
+}
+function get(){
+  const item = lockers[me][0];
+  addLog(item ? `线程${me+1} get() → 取到：${item}` : `线程${me+1} get() → 柜子是空的`);
+  render();
+}
+function clearMine(){
+  if (lockers[me].length) addLog(`线程${me+1} remove() → 清空柜子（防内存泄漏的规矩）`, "g");
+  lockers[me] = [];
+  render();
+}
+function render(){
+  for (let i = 0; i < 3; i++) {
+    $("c"+i).textContent = lockers[i].length ? "🎒 " + lockers[i].join("、") : "（空的）";
+  }
+}
+setMe(0); render();
+</script>
+</body>
+</html>

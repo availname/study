@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>import 与 export</title>
+</head>
+<body>
+  <h1>import 与 export</h1>
+  <button id="greet-button" type="button">调用导入的函数</button>
+  <p id="output"></p>
+
+  <script type="module">
+    import { createGreeting } from './student-tools.js'
+
+    document.querySelector('#greet-button').addEventListener('click', () => {
+      document.querySelector('#output').textContent = createGreeting('小明')
+    })
+  </script>
+</body>
+</html>

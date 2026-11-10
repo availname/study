@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>消息可靠性全链路 · MQ stage3/01</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 26px; }
+  h1 { color: #7dd3fc; font-size: 21px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 14px; }
+  .scenes { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .scenes button { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 8px;
+                   padding: 8px 14px; font-size: 13px; cursor: pointer; }
+  .scenes button:hover { border-color: #64748b; }
+  .scenes button.on { background: #1e40af; color: #dbeafe; border-color: #3b82f6; }
+  .ctrl { margin-bottom: 14px; }
+  .ctrl button { background: #166534; color: #dcfce7; border: none; border-radius: 8px; padding: 9px 20px;
+                 font-size: 14px; cursor: pointer; margin-right: 8px; }
+  .ctrl button:hover { background: #22c55e; }
+  .ctrl button:disabled { opacity: .35; cursor: not-allowed; }
+  .board { display: flex; gap: 18px; }
+  .box { border-radius: 12px; padding: 14px; min-height: 300px; }
+  .box h3 { font-size: 14px; color: #7dd3fc; margin-bottom: 10px; }
+  .db { width: 300px; background: #1e293b; border: 2px solid #334155; }
+  .db.hl { border-color: #fbbf24; box-shadow: 0 0 18px #fbbf2455; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  td, th { padding: 6px 8px; border-bottom: 1px solid #334155; text-align: left; }
+  th { color: #64748b; font-weight: normal; }
+  .tag { padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: bold; }
+  .tag.p0 { background: #78350f; color: #fcd34d; }  .tag.p1 { background: #14532d; color: #86efac; }
+  .tag.p2 { background: #7f1d1d; color: #fca5a5; }  .tag.p3 { background: #4c1d95; color: #c4b5fd; }
+  .mq { flex: 1; background: #1e293b; border: 2px solid #334155; }
+  .mq.hl { border-color: #22d3ee; box-shadow: 0 0 18px #22d3ee55; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+  .q { flex: 1; border: 2px dashed #475569; border-radius: 10px; padding: 8px; min-height: 58px; }
+  .q b { color: #94a3b8; font-size: 12px; display: block; margin-bottom: 6px; }
+  .q.hl { border-color: #22d3ee; background: #164e6355; }
+  .q.dlq { border-color: #7f1d1d; }
+  .q.dlq.hl { border-color: #f87171; background: #450a0a55; }
+  .msg { display: inline-block; padding: 3px 10px; border-radius: 6px; background: #fbbf24;
+         color: #422006; font-size: 12px; font-weight: bold; }
+  .consumer { width: 240px; background: #1e293b; border: 2px solid #334155; }
+  .consumer.hl { border-color: #a78bfa; box-shadow: 0 0 18px #a78bfa55; }
+  .consumer .state { font-size: 13px; color: #a5b4fc; margin: 8px 0; }
+  .cons { flex: 1; background: #1e293b; border: 2px solid #334155; }
+  .cons.hl { border-color: #f87171; box-shadow: 0 0 18px #f8717155; }
+  .log { width: 100%; margin-top: 16px; background: #020617; border: 1px solid #1e293b; border-radius: 10px;
+         padding: 10px; font-size: 12.5px; height: 170px; overflow-y: auto; }
+  .log div { padding: 2px 0; color: #94a3b8; }
+  .log b { color: #fbbf24; } .log .g { color: #34d399; } .log .r { color: #f87171; } .log .c { color: #22d3ee; }
+</style>
+</head>
+<body>
+<h1>消息可靠性全链路交互演示</h1>
+<div class="sub">MQ 教学 stage3/01 · 本地消息表 + Confirm + 补偿重发 + 死信兜底——选一个故障场景，点"下一步"单步观看，或"自动播放"</div>
+
+<div class="scenes">
+  <button id="sc0" class="on" onclick="load(0)">场景① 一切正常</button>
+  <button id="sc1" onclick="load(1)">场景② Confirm 失败 → 补偿重发</button>
+  <button id="sc2" onclick="load(2)">场景③ 消费失败 → 重试3次 → 死信</button>
+  <button id="sc3" onclick="load(3)">场景④ 应用重启丢 Confirm → 补偿捡回</button>
+</div>
+
+<div class="ctrl">
+  <button id="next" onclick="nextStep()">下一步 ▶</button>
+  <button id="auto" onclick="autoPlay()">▶ 自动播放</button>
+  <button onclick="load(cur)" style="background:#334155;color:#cbd5e1">↺ 重新演示</button>
+</div>
+
+<div class="board">
+  <div class="box db" id="box-db">
+    <h3>MySQL（业务库）</h3>
+    <table>
+      <tr><th>业务表</th><th>状态</th></tr>
+      <tr><td>t_order 订单1001</td><td id="orderState">未创建</td></tr>
+      <tr><th colspan="2">t_mq_send_record（本地消息表）</th></tr>
+      <tr><td>msg-1001 订单已创建</td><td><span class="tag" id="msgTag">—</span></td></tr>
+    </table>
+  </div>
+  <div class="box mq" id="box-mq">
+    <h3>RabbitMQ Broker</h3>
+    <div class="row">
+      <div class="q" id="q-ex"><b>交换机 community.post</b><span id="ex-msg"></span></div>
+      <div class="q" id="q-main"><b>队列 post.queue</b><span id="q-msg"></span></div>
+    </div>
+    <div class="row">
+      <div class="q dlq" id="q-dlq"><b>死信队列 dlq</b><span id="d-msg"></span></div>
+      <div class="q" id="q-comp"><b>补偿任务（每10s扫描）</b><span id="comp" style="color:#94a3b8;font-size:12px">待命中</span></div>
+    </div>
+  </div>
+  <div class="box cons" id="box-cons">
+    <h3>消费者</h3>
+    <div class="state" id="consState">空闲</div>
+    <div style="color:#64748b;font-size:12px">业务：更新订单状态为已处理<br>幂等：message_id 去重（第二道防线）</div>
+  </div>
+</div>
+
+<div class="log" id="logEl"></div>
+
+<script>
+"use strict";
+let cur = 0, steps = [], idx = -1, timer = null;
+let st = {};          // 页面状态（全量重绘）
+
+function $(id){ return document.getElementById(id); }
+
+// ============ 四个场景的步骤脚本 ============
+const SCRIPTS = {
+  0: [  // 一切正常
+    { t:"【业务事务】INSERT 订单1001 + INSERT 本地消息表(status=待确认) —— 两笔写在同一个事务", hl:["box-db"],
+      set:{ order:"已创建", msg:0, msgText:"待确认" } },
+    { t:"【事务提交】afterCommit 触发：发送消息到交换机（带 messageId=msg-1001）", hl:["box-mq","q-ex"],
+      set:{ ex:"msg-1001", order:"已创建", msg:0, msgText:"待确认" } },
+    { t:"【Broker 入队】消息进入 post.queue，状态 Ready", hl:["q-main"],
+      set:{ ex:"", queue:"msg-1001", order:"已创建", msg:1, msgText:"已确认(ACK)" } },
+    { t:"【消费者取消息】消息进入 Unacked 状态，开始业务处理", hl:["box-cons"],
+      set:{ queue:"", cons:"处理中(msg-1001 Unacked)", order:"已创建", msg:1, msgText:"已确认" } },
+    { t:"【业务成功】UPDATE 订单已处理 + 幂等校验通过 → ACK", hl:["box-cons"],
+      set:{ queue:"", cons:"空闲（ACK 完成）", order:"已处理", msg:1, msgText:"已确认" } },
+    { t:"✅ 链路闭环：业务/消息表/队列/消费者 四方一致。这就是 at-least-once + 幂等 = 效果上的 exactly-once", hl:[],
+      set:{ queue:"", cons:"空闲", order:"已处理", msg:1, msgText:"已确认" } }
+  ],
+  1: [  // Confirm 失败 → 补偿
+    { t:"【业务事务】INSERT 订单 + 消息表（同上）", hl:["box-db"], set:{ order:"已创建", msg:0, msgText:"待确认" } },
+    { t:"【发送】消息发出，但网络抖动 → Broker 回了 <b>nack</b>！", hl:["box-mq","q-ex"],
+      set:{ ex:"(发送失败)", order:"已创建", msg:2, msgText:"发送失败" } },
+    { t:"【Confirm 回调】ack=false → 消息表标记 status=发送失败（记下错误原因）", hl:["box-db"],
+      set:{ order:"已创建", msg:2, msgText:"失败: BROKER_NACK" } },
+    { t:"【补偿任务】10 秒扫描：发现待补偿消息 → 复用同一 messageId 重发（幂等键不变！）", hl:["q-comp","q-main"],
+      set:{ comp:"发现失败消息，重发中...", ex:"msg-1001 (重发)", queue:"msg-1001",
+            order:"已创建", msg:1, msgText:"已确认(重发)" } },
+    { t:"【消费者】正常消费 → ACK", hl:["box-cons"], set:{ queue:"", cons:"处理完成 ACK", order:"已处理", msg:1, msgText:"已确认" } },
+    { t:"✅ 结论：发送失败不影响业务（事务已提交），补偿任务最终把消息送达——<b>至少一次 + 下游幂等</b>", hl:[], set:{} }
+  ],
+  2: [  // 消费失败 → 死信
+    { t:"【正常前半段】事务+发送+入队+Confirm（快进）", hl:["q-main"],
+      set:{ order:"已创建", msg:1, msgText:"已确认", queue:"msg-1001(毒消息)" } },
+    { t:"【消费者取消息】业务处理…抛出异常！", hl:["box-cons"], set:{ cons:"❌ 业务异常(重试 1/3)", queue:"", msg:1, msgText:"已确认" } },
+    { t:"【本地重试 2/3】间隔 1 秒再试…又失败", hl:["box-cons"], set:{ cons:"❌ 重试 2/3 失败" } },
+    { t:"【本地重试 3/3】仍失败 → 重试耗尽，requeue=false", hl:["box-cons"], set:{ cons:"❌ 重试 3/3 全部失败" } },
+    { t:"【进入死信】消息路由到死信交换机 → 死信队列（绝不无声丢弃！）", hl:["q-dlq"],
+      set:{ dlq:"msg-1001", cons:"空闲" } },
+    { t:"【死信消费者】落库 t_mq_dead_letter + 告警 → 人工修复后重新投递", hl:["q-dlq"],
+      set:{ dlq:"(已落库存档)", cons:"死信处理完成" } },
+    { t:"✅ 结论：失败的消息走完 重试→死信→人工 全流程，<b>每一步都可见可控</b>——没有静默丢弃", hl:[], set:{} }
+  ],
+  3: [  // 应用重启丢 Confirm
+    { t:"【业务事务】INSERT 订单 + 消息表 → 提交成功", hl:["box-db"], set:{ order:"已创建", msg:0, msgText:"待确认" } },
+    { t:"【发送】消息实际已到达队列——但应用立刻被 kill -9，<b>Confirm 回调永远没执行</b>", hl:["q-main"],
+      set:{ queue:"msg-1001", order:"已创建", msg:0, msgText:"待确认" } },
+    { t:"【危险窗口】消息表停在\"待确认\"，应用又重启了——这个消息会不会丢？", hl:["box-db"],
+      set:{ queue:"msg-1001", order:"已创建", msg:0, msgText:"待确认" } },
+    { t:"【补偿任务】重启后首次扫描：next_retry_at 已超时 → 重发同一 messageId", hl:["q-comp","q-main"],
+      set:{ comp:"扫描发现待确认消息", queue:"msg-1001 + msg-1001(重发副本)", order:"已创建", msg:1, msgText:"已确认(重发)" } },
+    { t:"【消费者 ×2】两条消息先后到达 → <b>第一条正常处理，第二条被 messageId 幂等拦截</b>", hl:["box-cons"],
+      set:{ queue:"", cons:"第1条处理成功；第2条幂等跳过", order:"已处理", msg:1, msgText:"已确认" } },
+    { t:"✅ 结论：Confirm 丢失窗口由补偿任务兜底，重复消息由幂等拦截——<b>三道机制咬合成闭环</b>，这就是本地消息表的精髓", hl:[], set:{} }
+  ]
+};
+
+function load(n){
+  cur = n;
+  [0,1,2,3].forEach(i => $("sc"+i).classList.toggle("on", i===n));
+  steps = SCRIPTS[n];
+  idx = -1; timer && clearInterval(timer);
+  $("next").disabled = false; $("auto").disabled = false;
+  st = { order:"未创建", msg:null, msgText:"—", ex:"", queue:"", dlq:"", comp:"待命中", cons:"空闲" };
+  render(); autoPlay();
+}
+
+function nextStep(){
+  idx++;
+  if(idx >= steps.length){
+    $("next").disabled = true; $("auto").disabled = true;
+    return false;
+  }
+  const s = steps[idx];
+  Object.assign(st, s.set || {});
+  addLog(s.t, s.hl);
+  render();
+  return true;
+}
+function autoPlay(){
+  $("auto").disabled = true;
+  timer = setInterval(() => { if(!nextStep()) clearInterval(timer); }, 1600);
+}
+function addLog(t, hl){
+  const el = document.createElement("div");
+  el.innerHTML = `第 ${idx+1}/${steps.length} 步 · ` + t;
+  $("logEl").prepend(el);
+}
+function render(){
+  // 高亮
+  ["box-db","box-mq","box-cons","q-ex","q-main","q-dlq","q-comp"].forEach(id =>
+    $(id).classList.remove("hl"));
+  (steps[idx] && steps[idx].hl || []).forEach(id => $(id).classList.add("hl"));
+  // 状态
+  $("orderState").textContent = st.order;
+  $("msgTag").textContent = st.msgText;
+  $("msgTag").className = "tag p" + (st.msg == null ? 0 : st.msg);
+  $("ex-msg").innerHTML = st.ex ? `<span class="msg">${st.ex}</span>` : "";
+  $("q-msg").innerHTML = st.queue ? `<span class="msg">${st.queue}</span>` : "";
+  $("d-msg").innerHTML = st.dlq ? `<span class="msg">${st.dlq}</span>` : "";
+  $("comp").textContent = st.comp;
+  $("comp").style.color = st.comp === "待命中" ? "#94a3b8" : "#fbbf24";
+  $("consState").textContent = st.cons;
+}
+load(0);
+</script>
+</body>
+</html>

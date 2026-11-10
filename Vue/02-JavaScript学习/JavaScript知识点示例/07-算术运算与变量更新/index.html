@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>算术运算与变量更新</title>
+</head>
+<body>
+  <h1>算术运算与变量更新</h1>
+  <button id="buy-button" type="button">购买一件商品</button>
+  <p id="output"></p>
+
+  <script>
+    const price = 12
+    let count = 0
+    const output = document.querySelector('#output')
+
+    document.querySelector('#buy-button').addEventListener('click', () => {
+      count = count + 1
+      const total = price * count
+      output.textContent = '数量：' + count + '，总价：' + total
+    })
+  </script>
+</body>
+</html>

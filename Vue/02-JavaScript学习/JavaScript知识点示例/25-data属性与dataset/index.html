@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>data 属性与 dataset</title>
+</head>
+<body>
+  <h1>data 属性与 dataset</h1>
+  <button id="student-button" type="button" data-student-id="101" data-student-name="小明">
+    读取学生数据
+  </button>
+  <button id="change-button" type="button">修改学生姓名</button>
+  <button id="attribute-button" type="button">用 getAttribute 读取</button>
+  <p id="output"></p>
+
+  <script>
+    const button = document.querySelector('#student-button')
+
+    button.addEventListener('click', () => {
+      const studentId = button.dataset.studentId
+      const studentName = button.dataset.studentName
+      document.querySelector('#output').textContent = studentId + '：' + studentName
+    })
+
+    document.querySelector('#change-button').addEventListener('click', () => {
+      button.dataset.studentName = '小红'
+      document.querySelector('#output').textContent =
+        'dataset 已修改 data-student-name：' + button.dataset.studentName
+    })
+
+    document.querySelector('#attribute-button').addEventListener('click', () => {
+      const studentId = button.getAttribute('data-student-id')
+      const studentName = button.getAttribute('data-student-name')
+      document.querySelector('#output').textContent =
+        'data-student-id：' + studentId + '；data-student-name：' + studentName
+    })
+  </script>
+</body>
+</html>

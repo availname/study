@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>if 与 else 条件</title>
+</head>
+<body>
+  <h1>if 与 else 条件</h1>
+  <input id="score" type="number" value="70" />
+  <button id="judge-button" type="button">判断</button>
+  <p id="output"></p>
+
+  <script>
+    document.querySelector('#judge-button').addEventListener('click', () => {
+      const score = Number(document.querySelector('#score').value)
+      const output = document.querySelector('#output')
+
+      if (score >= 60) {
+        output.textContent = '及格'
+      } else {
+        output.textContent = '不及格'
+      }
+    })
+  </script>
+</body>
+</html>

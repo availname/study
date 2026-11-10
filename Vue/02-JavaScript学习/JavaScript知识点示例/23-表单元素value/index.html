@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>表单元素 value</title>
+</head>
+<body>
+  <h1>表单元素 value</h1>
+  <label for="student-name">姓名：</label>
+  <input id="student-name" type="text" value="小明" />
+  <button id="read-button" type="button">读取 value</button>
+  <button id="write-button" type="button">修改 value</button>
+  <button id="compare-button" type="button">比较当前值和初始属性</button>
+  <p id="output"></p>
+
+  <script>
+    const input = document.querySelector('#student-name')
+    const output = document.querySelector('#output')
+
+    document.querySelector('#read-button').addEventListener('click', () => {
+      output.textContent = '当前输入：' + input.value
+    })
+
+    document.querySelector('#write-button').addEventListener('click', () => {
+      input.value = '小红'
+      output.textContent = 'JavaScript 已修改输入框内容'
+    })
+
+    document.querySelector('#compare-button').addEventListener('click', () => {
+      const currentValue = input.value
+      const initialValue = input.getAttribute('value')
+
+      output.textContent = '当前 value：' + currentValue + '；HTML 初始属性：' + initialValue
+    })
+  </script>
+</body>
+</html>

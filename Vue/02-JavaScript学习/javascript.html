@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>JavaScript 单文件演示</title>
+</head>
+<body>
+  <h1>JavaScript 单文件演示</h1>
+
+  <p>这个页面把 JavaScript 基础知识集中在一个 HTML 文件中。</p>
+
+  <h2>一、基础语法</h2>
+  <button type="button" id="run-basic-button">运行基础语法</button>
+  <pre id="basic-output"></pre>
+
+  <h2>二、DOM 网页操作</h2>
+
+  <h3>查找和修改元素</h3>
+  <p id="dom-message">这段文字还没有被 JavaScript 修改。</p>
+  <button type="button" id="change-message-button">修改文字</button>
+
+  <p>
+    <label for="dom-input">输入内容：</label>
+    <input id="dom-input" type="text" value="初始内容" />
+    <button type="button" id="read-input-button">读取输入框</button>
+  </p>
+  <p id="dom-input-output"></p>
+
+  <h3>属性、class 和 style</h3>
+  <p>
+    <a id="dom-link" href="https://example.com" target="_blank">示例链接</a>
+    <button type="button" id="change-attribute-button">修改 href</button>
+  </p>
+  <p id="attribute-output"></p>
+  <p id="class-target" class="normal-text" data-student-id="101">这是 class、style 和 data-* 的演示对象。</p>
+  <button type="button" id="add-class-button">添加 active</button>
+  <button type="button" id="remove-class-button">删除 active</button>
+  <button type="button" id="toggle-class-button">切换 class</button>
+  <button type="button" id="contains-class-button">检查 active</button>
+  <button type="button" id="replace-class-button">替换 class</button>
+  <button type="button" id="change-style-button">修改 style</button>
+  <button type="button" id="read-dataset-button">读取 dataset</button>
+  <p id="class-output"></p>
+  <p id="element-output"></p>
+
+  <h3>创建、添加和删除元素</h3>
+  <p>
+    <label for="item-input">列表内容：</label>
+    <input id="item-input" type="text" />
+    <button type="button" id="add-item-button">添加列表项</button>
+    <button type="button" id="remove-item-button">删除最后一项</button>
+  </p>
+  <p id="list-output"></p>
+  <ul id="item-list">
+    <li>已有列表项</li>
+  </ul>
+
+  <h3>父子元素关系</h3>
+  <div id="dom-parent" data-area="dom-demo">
+    <p id="dom-child">这是父元素里面的子元素。</p>
+  </div>
+  <button type="button" id="read-tree-button">查看 DOM 树关系</button>
+  <pre id="tree-output"></pre>
+
+  <h2>三、事件和表单</h2>
+  <form id="student-form">
+    <p>
+      <label for="student-name">姓名：</label>
+      <input id="student-name" name="name" type="text" required />
+    </p>
+    <p>
+      <label for="student-score">成绩：</label>
+      <input id="student-score" name="score" type="number" min="0" max="100" required />
+    </p>
+    <button type="submit">提交学生</button>
+    <button type="reset">重置表单</button>
+  </form>
+  <p id="form-output"></p>
+
+  <h2>四、fetch、Promise、async 和 await</h2>
+  <button type="button" id="fetch-button">加载学生数据</button>
+  <p id="fetch-status"></p>
+  <ul id="student-list"></ul>
+
+  <h2>五、import 和 export</h2>
+  <p>下面的按钮会动态创建一个模块，模块中使用 export，当前页面使用 import 加载它。</p>
+  <button type="button" id="module-button">运行模块演示</button>
+  <pre id="module-output"></pre>
+
+  <h2>六、class 和实例</h2>
+  <button type="button" id="class-button">创建 Student 实例</button>
+  <pre id="student-class-output"></pre>
+
+  <h2>七、错误和调试</h2>
+  <button type="button" id="error-button">运行错误演示</button>
+  <pre id="error-output"></pre>
+
+  <script>
+    // =====================================================
+    // 1. 基础语法：变量、数据类型、条件、数组、对象、循环、函数
+    // =====================================================
+    const basicOutput = document.querySelector('#basic-output')
+
+    function printBasic(message) {
+      basicOutput.textContent += message + '\n'
+      console.log(message)
+    }
+
+    document.querySelector('#run-basic-button').addEventListener('click', () => {
+      basicOutput.textContent = ''
+
+      const studentName = '小明'
+      let studyCount = 1
+      studyCount = studyCount + 1
+
+      const age = 18
+      const isAdult = age >= 18
+      const price = 10
+      const count = 3
+
+      printBasic('const：' + studentName)
+      printBasic('let 修改后：学习了 ' + studyCount + ' 个知识点')
+      printBasic('布尔值：' + isAdult)
+      printBasic('算术运算：' + price + ' * ' + count + ' = ' + (price * count))
+
+      if (isAdult) {
+        printBasic('if 判断：已经成年')
+      } else {
+        printBasic('if 判断：还未成年')
+      }
+
+      const fruits = ['苹果', '香蕉', '橙子']
+      fruits.push('西瓜')
+      printBasic('数组第一个元素：' + fruits[0])
+      printBasic('数组长度：' + fruits.length)
+
+      const student = {
+        name: '小明',
+        score: 86
+      }
+      printBasic('对象属性：' + student.name + '，' + student.score + ' 分')
+
+      for (const fruit of fruits) {
+        printBasic('循环读取：' + fruit)
+      }
+
+      function getLevel(score) {
+        if (score >= 90) {
+          return '优秀'
+        }
+
+        if (score >= 60) {
+          return '及格'
+        }
+
+        return '不及格'
+      }
+
+      printBasic('函数返回：' + getLevel(student.score))
+    })
+
+    // =====================================================
+    // 2. DOM：查找、修改、属性、class、style、创建和删除
+    // =====================================================
+    const domMessage = document.querySelector('#dom-message')
+    const domInput = document.querySelector('#dom-input')
+    const domInputOutput = document.querySelector('#dom-input-output')
+    const domLink = document.querySelector('#dom-link')
+    const attributeOutput = document.querySelector('#attribute-output')
+    const classTarget = document.querySelector('#class-target')
+    const classOutput = document.querySelector('#class-output')
+    const elementOutput = document.querySelector('#element-output')
+    const itemInput = document.querySelector('#item-input')
+    const itemList = document.querySelector('#item-list')
+    const listOutput = document.querySelector('#list-output')
+
+    document.querySelector('#change-message-button').addEventListener('click', () => {
+      domMessage.textContent = 'querySelector 找到我，textContent 修改了我。'
+    })
+
+    document.querySelector('#read-input-button').addEventListener('click', () => {
+      domInputOutput.textContent = 'input.value：' + domInput.value
+    })
+
+    document.querySelector('#change-attribute-button').addEventListener('click', () => {
+      const oldHref = domLink.getAttribute('href')
+      domLink.setAttribute('href', 'https://developer.mozilla.org/')
+      domLink.textContent = 'MDN 文档链接'
+      attributeOutput.textContent = '旧 href：' + oldHref + '；新 href：' + domLink.getAttribute('href')
+    })
+
+    document.querySelector('#add-class-button').addEventListener('click', () => {
+      classTarget.classList.add('active')
+      classOutput.textContent = 'classList.add()：添加 active；当前 class：' + classTarget.className
+    })
+
+    document.querySelector('#remove-class-button').addEventListener('click', () => {
+      classTarget.classList.remove('active')
+      classOutput.textContent = 'classList.remove()：删除 active；当前 class：' + classTarget.className
+    })
+
+    document.querySelector('#toggle-class-button').addEventListener('click', () => {
+      const isActive = classTarget.classList.toggle('active')
+      classOutput.textContent = 'classList.toggle() 结果：' + isActive + '；当前 class：' + classTarget.className
+    })
+
+    document.querySelector('#contains-class-button').addEventListener('click', () => {
+      const hasActive = classTarget.classList.contains('active')
+      classOutput.textContent = 'classList.contains("active")：' + hasActive
+    })
+
+    document.querySelector('#replace-class-button').addEventListener('click', () => {
+      let replaced = false
+
+      if (classTarget.classList.contains('normal-text')) {
+        replaced = classTarget.classList.replace('normal-text', 'highlight-text')
+      } else if (classTarget.classList.contains('highlight-text')) {
+        replaced = classTarget.classList.replace('highlight-text', 'normal-text')
+      } else {
+        classTarget.classList.add('highlight-text')
+      }
+
+      classOutput.textContent = 'classList.replace() 结果：' + replaced + '；当前 class：' + classTarget.className
+    })
+
+    document.querySelector('#change-style-button').addEventListener('click', () => {
+      classTarget.style.color = 'red'
+      classTarget.style.backgroundColor = 'lightyellow'
+      classTarget.style.padding = '8px'
+      elementOutput.textContent = 'element.style 已经修改内联样式。'
+    })
+
+    document.querySelector('#read-dataset-button').addEventListener('click', () => {
+      elementOutput.textContent = 'data-student-id：' + classTarget.dataset.studentId
+    })
+
+    document.querySelector('#add-item-button').addEventListener('click', () => {
+      const itemText = itemInput.value.trim()
+
+      if (itemText === '') {
+        listOutput.textContent = '请输入列表内容。'
+        return
+      }
+
+      const listItem = document.createElement('li')
+      listItem.textContent = itemText
+      listItem.dataset.source = 'user'
+      itemList.appendChild(listItem)
+      itemInput.value = ''
+      listOutput.textContent = 'createElement() 创建并 appendChild() 添加成功。'
+    })
+
+    document.querySelector('#remove-item-button').addEventListener('click', () => {
+      const lastItem = itemList.lastElementChild
+
+      if (lastItem === null) {
+        listOutput.textContent = '没有可以删除的列表项。'
+        return
+      }
+
+      lastItem.remove()
+      listOutput.textContent = 'lastElementChild 找到最后一项，remove() 删除成功。'
+    })
+
+    document.querySelector('#read-tree-button').addEventListener('click', () => {
+      const parent = document.querySelector('#dom-parent')
+      const child = document.querySelector('#dom-child')
+
+      document.querySelector('#tree-output').textContent = [
+        '子元素 id：' + child.id,
+        '父元素 id：' + child.parentElement.id,
+        '父元素子元素数量：' + parent.children.length,
+        '自定义区域：' + parent.dataset.area,
+        '父子关系是否成立：' + (child.parentElement === parent)
+      ].join('\n')
+    })
+
+    // =====================================================
+    // 3. 事件和表单：submit、preventDefault、FormData、校验
+    // =====================================================
+    const studentForm = document.querySelector('#student-form')
+    const formOutput = document.querySelector('#form-output')
+
+    studentForm.addEventListener('submit', (event) => {
+      event.preventDefault()
+
+      try {
+        const formData = new FormData(studentForm)
+        const name = formData.get('name').trim()
+        const score = Number(formData.get('score'))
+
+        if (name === '') {
+          throw new Error('姓名不能为空')
+        }
+
+        if (Number.isNaN(score) || score < 0 || score > 100) {
+          throw new Error('成绩必须是 0 到 100 之间的数字')
+        }
+
+        formOutput.textContent = '提交成功：' + name + '，成绩 ' + score
+        studentForm.reset()
+      } catch (error) {
+        console.error('表单错误：', error)
+        formOutput.textContent = '提交失败：' + error.message
+      }
+    })
+
+    studentForm.addEventListener('reset', () => {
+      formOutput.textContent = '表单已经重置。'
+    })
+
+    // =====================================================
+    // 4. fetch、Promise、async、await
+    // =====================================================
+    const fetchStatus = document.querySelector('#fetch-status')
+    const studentList = document.querySelector('#student-list')
+
+    function createLocalJsonUrl() {
+      const data = [
+        { name: '小明', score: 86 },
+        { name: '小红', score: 92 },
+        { name: '小刚', score: 58 }
+      ]
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' })
+      return URL.createObjectURL(blob)
+    }
+
+    function wait(milliseconds) {
+      return new Promise((resolve) => {
+        setTimeout(resolve, milliseconds)
+      })
+    }
+
+    async function loadStudents() {
+      const dataUrl = createLocalJsonUrl()
+      fetchStatus.textContent = 'fetch 请求中，正在等待 Promise...'
+
+      try {
+        await wait(300)
+        const response = await fetch(dataUrl)
+
+        if (!response.ok) {
+          throw new Error('请求失败，状态码：' + response.status)
+        }
+
+        const students = await response.json()
+        studentList.textContent = ''
+
+        students.forEach((student) => {
+          const listItem = document.createElement('li')
+          listItem.textContent = student.name + '：' + student.score + ' 分'
+          studentList.appendChild(listItem)
+        })
+
+        fetchStatus.textContent = '加载完成，共 ' + students.length + ' 名学生。'
+        return students
+      } catch (error) {
+        console.error('fetch 错误：', error)
+        fetchStatus.textContent = '加载失败：' + error.message
+        return []
+      } finally {
+        URL.revokeObjectURL(dataUrl)
+      }
+    }
+
+    document.querySelector('#fetch-button').addEventListener('click', () => {
+      loadStudents().then((students) => {
+        console.log('Promise 完成，共加载：', students.length)
+      })
+    })
+
+    // =====================================================
+    // 5. import 和 export：单文件中的动态模块演示
+    // =====================================================
+    document.querySelector('#module-button').addEventListener('click', async () => {
+      const moduleOutput = document.querySelector('#module-output')
+      const moduleSource = `
+        export function createGreeting(name) {
+          return '模块中的函数说：你好，' + name
+        }
+      `
+      const moduleBlob = new Blob([moduleSource], { type: 'text/javascript' })
+      const moduleUrl = URL.createObjectURL(moduleBlob)
+
+      try {
+        const module = await import(moduleUrl)
+        moduleOutput.textContent = [
+          'export：模块导出了 createGreeting 函数。',
+          'import：当前页面成功导入模块。',
+          module.createGreeting('学习者')
+        ].join('\n')
+      } catch (error) {
+        console.error('模块错误：', error)
+        moduleOutput.textContent = '模块加载失败：' + error.message
+      } finally {
+        URL.revokeObjectURL(moduleUrl)
+      }
+    })
+
+    // =====================================================
+    // 6. class 和 Student 实例
+    // =====================================================
+    class Student {
+      constructor(name, score) {
+        this.name = name
+        this.score = score
+      }
+
+      getLevel() {
+        if (this.score >= 90) {
+          return '优秀'
+        }
+
+        if (this.score >= 60) {
+          return '及格'
+        }
+
+        return '不及格'
+      }
+
+      describe() {
+        return this.name + '：' + this.score + ' 分（' + this.getLevel() + '）'
+      }
+    }
+
+    document.querySelector('#class-button').addEventListener('click', () => {
+      const student = new Student('课堂示例', 88)
+      document.querySelector('#student-class-output').textContent = [
+        'class Student 创建完成。',
+        'student.name：' + student.name,
+        'student.score：' + student.score,
+        'student.describe()：' + student.describe()
+      ].join('\n')
+    })
+
+    // =====================================================
+    // 7. 错误和调试
+    // =====================================================
+    document.querySelector('#error-button').addEventListener('click', () => {
+      const errorOutput = document.querySelector('#error-output')
+
+      try {
+        JSON.parse('这不是 JSON')
+      } catch (error) {
+        console.error('捕获到错误：', error)
+        errorOutput.textContent = 'try...catch 捕获到：' + error.message
+      }
+    })
+  </script>
+</body>
+</html>

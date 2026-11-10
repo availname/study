@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>事务与 ACID · 记账本比喻（容易看懂版）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #f0fdfa; color: #1e293b; padding: 30px; }
+  h1 { color: #0f766e; font-size: 24px; }
+  .sub { color: #0f766e; opacity: .8; font-size: 14px; margin-bottom: 18px; }
+  .accounts { display: flex; gap: 20px; max-width: 620px; }
+  .acc { flex: 1; background: #fff; border-radius: 16px; padding: 18px; text-align: center;
+         border: 2px solid #99f6e4; transition: all .3s; }
+  .acc .face { font-size: 40px; }
+  .acc b { display: block; color: #0f766e; margin: 4px 0; }
+  .acc .money { font-size: 26px; font-weight: bold; color: #1e293b; transition: all .3s; }
+  .acc.deducting { border-color: #fbbf24; }
+  .acc.frozen { border-color: #94a3b8; opacity: .7; }
+  .arrowzone { display: flex; align-items: center; justify-content: center; width: 120px;
+               flex-direction: column; color: #0f766e; }
+  .arrowzone .a { font-size: 34px; transition: all .4s; }
+  .arrowzone .a.move { animation: fly .8s ease; }
+  @keyframes fly { 0%{transform:translateX(0);opacity:1} 60%{transform:translateX(30px)} 100%{transform:translateX(60px);opacity:.3} }
+  .acid { display: flex; gap: 12px; max-width: 900px; margin: 22px 0; }
+  .acidcard { flex: 1; background: #fff; border-radius: 14px; padding: 14px; border: 2px solid #99f6e4; }
+  .acidcard .letter { font-size: 26px; font-weight: bold; color: #0f766e; }
+  .acidcard b { display: block; margin: 4px 0; color: #134e4a; }
+  .acidcard p { font-size: 12.5px; color: #64748b; line-height: 1.6; }
+  .acidcard .status { margin-top: 8px; font-size: 12px; padding: 4px 8px; border-radius: 6px;
+                      background: #f0fdfa; color: #0f766e; display: inline-block; }
+  .acidcard .status.bad { background: #fef2f2; color: #dc2626; }
+  .btns { margin: 16px 0; }
+  .btns button { background: #0f766e; color: #fff; border: none; border-radius: 10px; padding: 11px 22px;
+                 font-size: 14px; cursor: pointer; margin: 0 8px 8px 0; }
+  .btns button:hover { background: #0d9488; }
+  .btns button.danger { background: #b45309; }
+  .btns button.danger:hover { background: #d97706; }
+  .story { max-width: 900px; background: #fff; border: 2px solid #99f6e4; border-radius: 14px;
+           padding: 16px 20px; font-size: 14px; line-height: 1.9; color: #334155; min-height: 100px; }
+  .story b { color: #0f766e; }
+  .story .warn { color: #dc2626; }
+  .story .ok { color: #16a34a; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>🏦 事务与 ACID = 老掌柜的记账本</h1>
+<div class="sub">MySQL 深入 02 · 转账 = “A 扣 100，B 加 100”两笔记账——两笔必须<b>同生共死</b>。点按钮看两种结局</div>
+
+<div class="accounts">
+  <div class="acc" id="accA"><div class="face">🧑‍💼</div><b>账户 A（你的工资卡）</b>
+    <div class="money" id="aMoney">¥1000</div></div>
+  <div class="arrowzone"><span class="a" id="fly">💰</span><span style="font-size:12px">转账 ¥100</span></div>
+  <div class="acc" id="accB"><div class="face">👩‍🎓</div><b>账户 B（学费卡）</b>
+    <div class="money" id="bMoney">¥500</div></div>
+</div>
+
+<div class="btns">
+  <button onclick="transfer(false)">✅ 正常转账 ¥100 给 B</button>
+  <button class="danger" onclick="transfer(true)">⚡ 转账中途“断电”（演示原子性）</button>
+  <button onclick="showAcid()">📚 看 ACID 四特性怎么保证的</button>
+</div>
+
+<div class="acid">
+  <div class="acidcard" id="acidA"><div class="letter">A</div><b>原子性 Atomicity</b>
+    <p>两笔记账同生共死——断电就<b>撕掉草稿重写</b>（undo log 回滚）</p>
+    <span class="status" id="stA">未演示</span></div>
+  <div class="acidcard" id="acidC"><div class="letter">C</div><b>一致性 Consistency</b>
+    <p>总账永远对得上：1000+500=1500 → 900+600=1500</p>
+    <span class="status" id="stC">1500 = 1500 ✓</span></div>
+  <div class="acidcard" id="acidI"><div class="letter">I</div><b>隔离性 Isolation</b>
+    <p>没结算完的草稿别人<b>看不见</b>（MVCC 快照）——防脏读</p>
+    <span class="status" id="stI">未演示</span></div>
+  <div class="acidcard" id="acidD"><div class="letter">D</div><b>持久性 Durability</b>
+    <p>提交后断电也不丢——<b>先用钢笔在小票上记一笔</b>（redo log）再誊到账本</p>
+    <span class="status" id="stD">未演示</span></div>
+</div>
+
+<div class="story" id="story"><b>老掌柜的故事：</b>转账要记两笔账（A 扣、B 加）。中途断电只记了一笔？——<b>总账就错了</b>。
+老掌柜的办法：先在<b>草稿纸</b>上记两笔（undo），都记好了才<b>誊到正式账本</b>，誊之前再在<b>小票</b>上按个手印（redo）防赖账。
+点上面的按钮看两种结局。</div>
+
+<script>
+"use strict";
+let a = 1000, b = 500;
+const totalEl = () => a + b;
+
+function setAccounts(aV, bV){
+  a = aV; b = bV;
+  document.getElementById("aMoney").textContent = "¥" + a;
+  document.getElementById("bMoney").textContent = "¥" + b;
+  document.getElementById("stC").textContent = a + " + " + b + " = " + (a+b) +
+    (a + b === 1500 ? " ✓" : " ✗ 错账!");
+  document.getElementById("stC").classList.toggle("bad", a + b !== 1500);
+}
+function acid(name, ok, text){
+  const map = { A:"stA", I:"stI", D:"stD" };
+  if (name) { const el = document.getElementById(map[name]); el.textContent = text;
+    el.classList.toggle("bad", !ok); }
+}
+function story(html){ document.getElementById("story").innerHTML = html; }
+
+function transfer(powerCut){
+  story("<b>【开始转账】</b>开启事务：A 扣 100（先记草稿）…");
+  document.getElementById("accA").classList.add("deducting");
+  setAccounts(900, b);
+  acid("A", false, "进行中…(草稿已记，可回滚)");
+
+  setTimeout(() => {
+    if (powerCut) {
+      story(`<span class="warn">💥 断电！第二笔（B 加 100）还没记——</span>` +
+        `<b>老掌柜撕掉草稿（undo 回滚）</b>：A 恢复 1000，B 还是 500。<span class="ok">总账依然 1500 ✓ —— 这就是「原子性」</span>` +
+        `<br>如果没有草稿机制：A=900、B=500，凭空消失 100 元！`);
+      setAccounts(1000, 500);
+      acid("A", true, "✓ 断电 → 草稿撕掉，一笔都没记");
+      acid("I", true, "✓ 草稿期间别人看的还是旧账");
+      acid("D", true, "✓ 誊账前的小票手印保证了可恢复");
+      document.getElementById("accA").classList.remove("deducting");
+      return;
+    }
+    setAccounts(900, 600);
+    story(`<span class="ok">✅ 转账成功！</span>A=900、B=600，总账 1500 ✓。
+      <br><b>提交前</b>：老掌柜在<b>小票（redo log）</b>按了手印——就算今晚账本被雨淋了（断电），凭小票也能把账补回来——<b>这就是「持久性」</b>。
+      <br><b>结算期间</b>：别的账房来查 A 的账，看到的是<b>结算前的旧账</b>（MVCC 快照）——这就是「隔离性」防脏读。`);
+    acid("A", true, "✓ 成功提交（草稿生效）");
+    acid("I", true, "✓ 期间他人看到旧账（MVCC）");
+    acid("D", true, "✓ redo 小票保证断电可恢复");
+    document.getElementById("accA").classList.remove("deducting");
+  }, 1200);
+}
+function showAcid(){
+  story(`<b>ACID 四特性与实现对照：</b><br>
+    <b>A 原子性</b> = 草稿纸（undo log 回滚）<br>
+    <b>C 一致性</b> = 目标（由 A+I+D 共同达成）<br>
+    <b>I 隔离性</b> = MVCC 快照 + 锁（下一章细讲）<br>
+    <b>D 持久性</b> = 小票（redo log，断电可凭小票恢复）<br>
+    一句话：<b>先记草稿和手印，再誊正式账本</b>——这就是 MySQL 保证数据可靠的全部秘密（详见日志体系篇）`);
+}
+setAccounts(1000, 500);
+</script>
+</body>
+</html>

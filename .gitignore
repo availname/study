@@ -1,0 +1,20 @@
+# 构建产物
+target/
+dist/
+out/
+build/
+
+# 前端依赖
+node_modules/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.trae/
+
+# 日志与临时文件
+*.log
+logs/
+.DS_Store
+Thumbs.db

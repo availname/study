@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>getAttribute 与 setAttribute</title>
+</head>
+<body>
+  <h1>getAttribute 与 setAttribute</h1>
+
+  <a id="dom-link" href="https://example.com" target="_blank">示例链接</a>
+  <button id="read-button" type="button" title ="cnm">读取 href</button>
+  <button id="change-button" type="button">修改 href 和 title</button>
+  <p id="output"></p>
+
+  <script>
+    const link = document.querySelector('#dom-link')
+    const output = document.querySelector('#output')
+
+    document.querySelector('#read-button').addEventListener('click', () => {
+      const href = link.getAttribute('href')
+      output.textContent = '当前 href：' + href
+    })
+
+    document.querySelector('#change-button').addEventListener('click', () => {
+      const oldHref = link.getAttribute('href')
+
+      link.setAttribute('href', 'https://developer.mozilla.org/')
+      link.setAttribute('title', '打开 MDN 文档')
+      link.textContent = 'MDN 文档链接'
+
+      const newHref = link.getAttribute('href')
+      const title = link.getAttribute('title')
+      output.textContent = '旧地址：' + oldHref + '；新地址：' + newHref + '；title：' + title
+    })
+  </script>
+</body>
+</html>

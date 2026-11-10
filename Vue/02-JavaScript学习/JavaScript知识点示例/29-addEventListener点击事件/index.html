@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>addEventListener 点击事件</title>
+</head>
+<body>
+  <h1>addEventListener 点击事件</h1>
+  <button id="click-button" type="button">点击我</button>
+  <p id="output">等待点击。</p>
+  <p id="click-count">点击次数：0</p>
+
+  <script>
+    const button = document.querySelector('#click-button')
+    const output = document.querySelector('#output')
+    const clickCount = document.querySelector('#click-count')
+    let count = 0
+
+    button.addEventListener('click', () => {
+      count = count + 1
+      output.textContent = 'click 是浏览器规定的点击事件名称。'
+      clickCount.textContent = '点击次数：' + count
+    })
+  </script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>线程池执行流程 · Java 并发 05</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 30px; }
+  h1 { color: #7dd3fc; font-size: 22px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 20px; }
+  .panel { display: flex; gap: 30px; }
+  .controls { width: 250px; flex-shrink: 0; }
+  .controls label { display: block; color: #94a3b8; font-size: 13px; margin: 10px 0 4px; }
+  .controls input { width: 100%; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; padding: 6px; }
+  .controls button { background: #1e40af; color: #dbeafe; border: none; border-radius: 8px; padding: 9px 0; font-size: 13px; cursor: pointer; margin-top: 10px; display: block; width: 100%; }
+  .controls button:hover { background: #3b82f6; }
+  .pool { flex: 1; }
+  .zone h3 { color: #7dd3fc; font-size: 14px; margin: 12px 0 6px; }
+  .row { display: flex; gap: 8px; min-height: 50px; align-items: center; flex-wrap: wrap; padding: 8px; border-radius: 10px; background: rgba(30,41,59,.4); }
+  .thread { width: 72px; height: 44px; border-radius: 8px; background: #164e63; border: 2px solid #22d3ee;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; color: #67e8f9; }
+  .thread .tid { font-weight: bold; }
+  .thread .st { font-size: 10px; }
+  .task { display: inline-block; padding: 3px 9px; border-radius: 6px; background: #fbbf24; color: #422006;
+          font-size: 11px; font-weight: bold; margin: 2px; }
+  .queue { min-height: 44px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 8px; border-radius: 10px; background: rgba(30,41,59,.4); }
+  .slot { width: 44px; height: 32px; border: 2px dashed #475569; border-radius: 6px; }
+  .reject { min-height: 44px; border: 2px solid #7f1d1d; background: rgba(69,10,10,.33); border-radius: 10px; padding: 8px; }
+  .reject .task { background: #f87171; color: #450a0a; }
+  .note { color: #64748b; font-size: 12px; margin-top: 6px; line-height: 1.5; }
+  .stat { color: #a5f3fc; font-size: 12px; margin-top: 10px; }
+</style>
+</head>
+<body>
+<h1>线程池执行流程交互演示</h1>
+<div class="sub">Java 并发 05 · 顺序背熟：核心线程 → 队列 → 临时线程 → 拒绝策略</div>
+
+<div class="panel">
+  <div class="controls">
+    <label>核心线程数 core</label><input id="core" value="2">
+    <label>队列容量 queue</label><input id="qsize" value="3">
+    <label>最大线程数 max</label><input id="max" value="4">
+    <label>每秒每线程完成任务数</label><input id="speed" value="1">
+    <button onclick="apply()">应用参数并重置</button>
+    <button onclick="burst(1)">📥 提交 1 个任务</button>
+    <button onclick="burst(20)">⚡ 一次提交 20 个（洪峰演示）</button>
+    <button style="background:#7f1d1d;color:#fecaca" onclick="reset()">↺ 重置</button>
+    <div class="stat" id="stat"></div>
+    <div class="note">
+      <b>顺序真相</b>：核心满 → <b>先排队</b>，队列满才建临时线程（不是先开满线程！）<br><br>
+      ⚠ 无界队列实验：队列容量设 9999 → 点洪峰 → 临时线程永远不建、任务无限堆积——<br>
+      这正是 <b>Executors.newFixedThreadPool 的 OOM 坑</b>。
+    </div>
+  </div>
+
+  <div class="pool">
+    <div class="zone"><h3>① 核心线程（常驻）</h3><div class="row" id="coreRow"></div></div>
+    <div class="zone"><h3>② 任务队列 BlockingQueue（演示用有界队列）</h3><div class="queue" id="queue"></div></div>
+    <div class="zone"><h3>③ 临时线程（keepAlive 空闲超时回收）</h3><div class="row" id="extraRow"></div></div>
+    <div class="zone"><h3>④ 拒绝区（队列满 + 线程到 max）</h3><div class="reject" id="reject"></div>
+      <div class="note">CallerRunsPolicy = 提交者自己执行（天然限流回压）；生产自定义：日志 + 落库 + 告警</div></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+let core=2, qsize=3, max=4, speed=1;
+let coreBusy=0, extraBusy=0, queue=[], rejected=0, done=0, taskId=0, timer=null;
+let logs = [];
+
+function $(id){ return document.getElementById(id); }
+
+function apply(){
+  core  = Math.max(1, parseInt($('core').value)||2);
+  qsize = Math.max(0, parseInt($('qsize').value)||3);
+  max   = Math.max(core, parseInt($('max').value)||4);
+  speed = Math.max(1, parseInt($('speed').value)||1);
+  coreBusy=0; extraBusy=0; queue=[]; rejected=0; done=0; taskId=0; logs=[];
+  $('reject').innerHTML='';
+  clearInterval(timer);
+  timer = setInterval(tick, 1000/speed);
+  addLog("参数已应用");
+  renderAll();
+}
+function burst(n){ for(let i=0;i<n;i++) submitOne(); }
+
+function submitOne(){
+  taskId++;
+  // ① 核心未满 → 建核心线程
+  if(coreBusy < core){
+    coreBusy++;
+    addLog(`核心线程未满 → 建核心线程，执行 #${taskId}`);
+  }
+  // ② 排队
+  else if(queue.length < qsize){
+    queue.push(taskId);
+    addLog(`核心满 → 任务#${taskId} 入队（${queue.length}/${qsize}）`);
+  }
+  // ③ 队列满 → 建临时线程
+  else if(coreBusy+extraBusy < max){
+    extraBusy++;
+    addLog(`队列满 → 建临时线程，执行 #${taskId}`);
+  }
+  // ④ 拒绝
+  else {
+    rejected++;
+    addLog(`❌ 拒绝 #${taskId}（队列满+线程到max，Abort策略）`);
+  }
+  renderAll(); updateStat();
+}
+function tick(){
+  const capacity = (coreBusy+extraBusy) * speed;          // 每 tick 消费上限
+  let n = Math.min(capacity, queue.length);
+  for(let i=0;i<n;i++){ queue.shift(); done++; }
+  // 空闲回收：队列空时，临时线程逐个回收（直到剩 core 个）
+  if(queue.length===0 && extraBusy>0){
+    extraBusy--;
+    addLog(`临时线程空闲超时 → 回收（剩 ${extraBusy} 个临时）`);
+  }
+  renderAll(); updateStat();
+}
+function addLog(t){
+  logs.unshift(new Date().toLocaleTimeString().slice(0,8)+" · "+t);
+  logs = logs.slice(0,8);
+  $('stat').innerHTML = `活跃线程 ${coreBusy+extraBusy}/${max} · 队列 ${queue.length}/${qsize} · 完成 ${done} · 拒绝 ${rejected}<br>`
+      + logs.map(l=>`<span style="color:#64748b">${l}</span>`).join("<br>");
+}
+function updateStat(){ addLog(""); }
+
+function renderAll(){
+  // 核心线程
+  let h1 = '';
+  for(let i=0;i<coreBusy;i++)
+    h1 += `<div class="thread"><span class="tid">核心${i+1}</span><span class="st">执行中</span></div>`;
+  for(let i=coreBusy;i<core;i++)
+    h1 += `<div class="thread" style="opacity:.25"><span class="tid">核心${i+1}</span><span class="st">待命</span></div>`;
+  $('coreRow').innerHTML = h1;
+
+  // 队列
+  let h2 = '';
+  queue.forEach(id => h2 += `<span class="task">#${id}</span>`);
+  for(let i=queue.length;i<qsize;i++) h2 += `<div class="slot"></div>`;
+  $('queue').innerHTML = h2;
+
+  // 临时线程
+  let h3 = '';
+  for(let i=0;i<extraBusy;i++)
+    h3 += `<div class="thread" style="border-color:#f472b6;color:#f9a8d4"><span class="tid">临时${i+1}</span><span class="st">执行中</span></div>`;
+  $('extraRow').innerHTML = h3 || '<div class="note">（无临时线程——队列没满过就不会建）</div>';
+
+  // 拒绝区
+  let h4 = '';
+  for(let i=0;i<Math.min(rejected,12);i++)
+    h4 += `<span class="task">#${taskId-rejected+i+1} 被拒</span>`;
+  $('reject').innerHTML = h4 || '<div class="note">（尚无任务被拒——队列满且线程到 max 才触发）</div>';
+}
+apply();
+</script>
+</body>
+</html>

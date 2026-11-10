@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>B+树索引与回表 · MySQL 深入 01</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 30px; }
+  h1 { color: #7dd3fc; font-size: 22px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 16px; }
+  .btns { margin-bottom: 14px; }
+  button { background: #1e40af; color: #dbeafe; border: none; border-radius: 8px; padding: 9px 16px;
+           font-size: 13px; cursor: pointer; margin-right: 10px; }
+  button:hover { background: #3b82f6; }
+  button.cover { background: #065f46; color: #a7f3d0; }
+  button.cover:hover { background: #10b981; }
+  button.reset { background: #7f1d1d; color: #fecaca; }
+  svg { display: block; margin: auto; }
+  .gnode rect { rx: 8; }
+  .hl rect, .hl path { filter: drop-shadow(0 0 6px #22d3ee); }
+  rect.box { fill: #1e293b; stroke: #475569; stroke-width: 1.5; }
+  rect.box.hl { fill: #164e63; stroke: #22d3ee; stroke-width: 2.5; }
+  rect.box.hot { fill: #78350f; stroke: #fbbf24; stroke-width: 2.5; }
+  text.key { fill: #cbd5e1; font-size: 13px; text-anchor: middle; }
+  text.key.hl { fill: #67e8f9; font-weight: bold; }
+  text.t { fill: #94a3b8; font-size: 13px; }
+  text.t2 { fill: #fbbf24; font-size: 13px; }
+  line.link { stroke: #64748b; stroke-width: 1.4; }
+  line.chain { stroke: #22c55e; stroke-width: 1.6; stroke-dasharray: 5,4; }
+  .log { width: 940px; margin: 16px auto; min-height: 120px; background: #020617; border: 1px solid #1e293b;
+         border-radius: 10px; padding: 10px; font-size: 13px; color: #94a3b8; }
+  .log b { color: #fbbf24; }
+  .log .g { color: #34d399; }
+</style>
+</head>
+<body>
+<h1>B+ 树索引与回表演示</h1>
+<div class="sub">MySQL 深入 01 · 左：二级索引树（叶子只存 name+id）· 右：聚簇索引树（叶子存整行）· 点按钮看查询路径</div>
+
+<div class="btns">
+  <button onclick="q1()">SELECT * WHERE name='zhangsan'（演示回表）</button>
+  <button class="cover" onclick="q2()">SELECT id,name WHERE name='zhangsan'（覆盖索引，免回表）</button>
+  <button class="reset" onclick="reset()">↺ 重置</button>
+</div>
+
+<svg width="940" height="430">
+  <!-- 标题 -->
+  <text class="t" x="60" y="24" font-size="15" fill="#7dd3fc">② 二级索引树 idx_name（叶子: name → id）</text>
+  <text class="t" x="560" y="24" font-size="15" fill="#7dd3fc">① 聚簇索引树（叶子: 整行数据）</text>
+
+  <!-- 聚簇索引树（右侧） -->
+  <g id="clusterTree">
+    <rect class="box" id="c-root" x="640" y="45" width="140" height="42"/>
+    <text class="key" x="710" y="71">id: 3</text>
+    <line class="link" x1="700" y1="87" x2="600" y2="165"/>
+    <line class="link" x1="720" y1="87" x2="800" y2="165"/>
+    <rect class="box" id="c-leaf1" x="510" y="165" width="180" height="88"/>
+    <text class="key" x="600" y="190">id=1 张三 age=20</text>
+    <text class="key" x="600" y="212">id=2 李四 age=25</text>
+    <text class="key" x="600" y="234">id=3 王五 age=30</text>
+    <rect class="box" id="c-leaf2" x="740" y="165" width="180" height="66"/>
+    <text class="key" x="830" y="190">id=4 zhangsan 25</text>
+    <text class="key" x="830" y="212">id=5 lisi 31</text>
+    <line class="chain" x1="690" y1="209" x2="740" y2="198"/>
+  </g>
+
+  <!-- 二级索引树（左侧） -->
+  <g id="secTree">
+    <rect class="box" id="s-root" x="140" y="45" width="160" height="42"/>
+    <text class="key" x="220" y="71">name: lisi … zhangsan</text>
+    <line class="link" x1="180" y1="87" x2="95" y2="165"/>
+    <line class="link" x1="260" y1="87" x2="340" y2="165"/>
+    <rect class="box" id="s-leaf1" x="40" y="165" width="150" height="66"/>
+    <text class="key" x="115" y="190">li → 1</text>
+    <text class="key" x="115" y="212">liu → 3</text>
+    <rect class="box" id="s-leaf2" x="250" y="165" width="160" height="66"/>
+    <text class="key" x="330" y="190">wang → 2</text>
+    <text class="key" x="330" y="212">zhangsan → 4</text>
+    <line class="chain" x1="190" y1="198" x2="250" y2="198"/>
+    <!-- 回表箭头：从二级叶到聚簇叶 -->
+    <path id="backArrow" d="M 410 212 C 500 260 520 260 505 225" fill="none"
+          stroke="#fbbf24" stroke-width="2.5" stroke-dasharray="7,5" visibility="hidden"
+          marker-end="url(#arr2)"/>
+    <text id="backLabel" x="440" y="300" fill="#fbbf24" font-size="13" visibility="hidden">回表：拿 id=4 回聚簇树查整行</text>
+  </g>
+
+  <defs>
+    <marker id="arr2" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+      <path d="M0,0 L8,4 L0,7" fill="#fbbf24"/>
+    </marker>
+  </defs>
+
+  <!-- 步骤标签 -->
+  <text id="step1" x="220" y="130" fill="#22d3ee" font-size="12" visibility="hidden">第①步：在二级索引树定位 name</text>
+  <text id="step2" x="620" y="140" fill="#fbbf24" font-size="12" visibility="hidden">第②步：回聚簇索引树取整行</text>
+</svg>
+
+<div class="log" id="log"></div>
+
+<script>
+"use strict";
+const log = [];
+function add(t, cls){ log.unshift(t); if(log.length>8) log.pop(); renderLog(); }
+function renderLog(){
+  document.getElementById("log").innerHTML =
+    log.map((t,i)=>`<div>${i===0?"<b>▸ </b>":"&nbsp;&nbsp;"}${t}</div>`).join("");
+}
+function hideAll(){
+  ["s-root","s-leaf2","c-root","c-leaf2","s-leaf1","c-leaf1"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.classList.remove("hl","hot");
+  });
+  ["step1","step2","backArrow","backLabel"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.setAttribute("visibility","hidden");
+  });
+  log.length = 0;
+}
+function reset(){ hideAll(); add("已重置。选择上方查询按钮开始演示"); }
+
+function q1(){                                   // SELECT * → 回表
+  hideAll();
+  add("SQL: SELECT * WHERE name='zhangsan'（要整行 → 需要 name 之外的数据）");
+  const s2 = document.getElementById("s-leaf2");
+  s2.classList.add("hl");
+  document.getElementById("step1").setAttribute("visibility","visible");
+  add("① 在<b>二级索引树</b>定位到 zhangsan → 叶子只存 [name, id=4]");
+  setTimeout(()=>{
+    const c2 = document.getElementById("c-leaf2");
+    c2.classList.add("hot");
+    document.getElementById("step2").setAttribute("visibility","visible");
+    document.getElementById("backArrow").setAttribute("visibility","visible");
+    document.getElementById("backLabel").setAttribute("visibility","visible");
+    add(`② <b>回表</b>：拿 id=4 回<b>聚簇索引树</b>查整行（第 2 次树查找）`);
+    add(`<span class="g">结论：SELECT * 需要回表 = 两次树查找；高频查询用覆盖索引可省掉第②步</span>`);
+  }, 900);
+}
+function q2(){                                   // 覆盖索引
+  hideAll();
+  add("SQL: SELECT id,name WHERE name='zhangsan'");
+  const s2 = document.getElementById("s-leaf2");
+  s2.classList.add("hl");
+  add("① 二级索引叶子已有 [name, id] → <b>查询列全在索引里 → 免回表</b>（Using index）");
+  add("<span class='g'>结论：覆盖索引 = 查询列全在索引中，只查一棵树</span>");
+}
+reset();
+</script>
+</body>
+</html>

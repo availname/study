@@ -1,0 +1,50 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: learn-center
+  datasource:
+    url: jdbc:mysql://localhost:3307/learn_center?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root123
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema.sql
+  data:
+    redis:
+      host: localhost
+      port: 6380
+      key-prefix: "lc:"        # 教学注释：实际使用时以代码里的前缀为准
+  rabbitmq:
+    host: localhost
+    port: 5673
+    username: guest
+    password: guest
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        prefetch: 10
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 500
+          multiplier: 2
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+
+lc:
+  enroll:
+    order-timeout-ms: 120000      # 抢课订单支付超时（教学 2 分钟）
+    daily-limit: 3                # 每人每天限抢 3 门
+    seckill-quota: 30             # 每门课限量名额（Redis 预扣用）

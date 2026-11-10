@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>布尔值与比较运算</title>
+</head>
+<body>
+  <h1>布尔值与比较运算</h1>
+  <label for="score">成绩：</label>
+  <input id="score" type="number" value="70" />
+  <button id="check-button" type="button">检查是否及格</button>
+  <p id="output"></p>
+
+  <script>
+    const scoreInput = document.querySelector('#score')
+
+    document.querySelector('#check-button').addEventListener('click', () => {
+      const score = Number(scoreInput.value)
+      const isPassed = score >= 60
+      document.querySelector('#output').textContent = 'score >= 60 的结果：' + isPassed
+    })
+  </script>
+</body>
+</html>

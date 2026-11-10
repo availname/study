@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>for...of 与 break、continue</title>
+</head>
+<body>
+  <h1>for...of 与 break、continue</h1>
+  <button id="run-button" type="button">查找香蕉</button>
+  <pre id="output"></pre>
+
+  <script>
+    const fruits = ['苹果', '跳过', '香蕉', '橙子']
+
+    document.querySelector('#run-button').addEventListener('click', () => {
+      let result = ''
+
+      for (const fruit of fruits) {
+        if (fruit === '跳过') {
+          continue
+        }
+
+        result += '检查：' + fruit + '\n'
+
+        if (fruit === '香蕉') {
+          result += '找到香蕉，停止循环'
+          break
+        }
+      }
+
+      document.querySelector('#output').textContent = result
+    })
+  </script>
+</body>
+</html>

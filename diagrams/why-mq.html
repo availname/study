@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>为什么需要 MQ · 快递柜比喻（容易看懂版）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #f8fafc; color: #1e293b; padding: 30px; }
+  h1 { color: #1d4ed8; font-size: 24px; }
+  .sub { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+  .modes { display: flex; gap: 10px; margin-bottom: 18px; }
+  .modes button { background: #e2e8f0; color: #475569; border: none; border-radius: 20px;
+                  padding: 10px 22px; font-size: 14px; cursor: pointer; }
+  .modes button.on { background: #1d4ed8; color: #fff; }
+  .board { display: flex; gap: 20px; }
+  .side { flex: 1; border-radius: 16px; padding: 18px; min-height: 380px; border: 2px solid; }
+  .side.bad { background: #fef2f2; border-color: #fecaca; }
+  .side.good { background: #f0fdf4; border-color: #bbf7d0; }
+  .side h2 { font-size: 17px; margin-bottom: 12px; }
+  .side.bad h2 { color: #dc2626; } .side.good h2 { color: #16a34a; }
+  .actor { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 12px;
+           padding: 10px 14px; margin: 8px 0; font-size: 14px; border: 1px solid #e2e8f0; }
+  .actor .face { font-size: 30px; }
+  .actor .t { color: #475569; }
+  .actor .t b { color: #1e293b; }
+  .busy { color: #dc2626; font-weight: bold; }
+  .free { color: #16a34a; font-weight: bold; }
+  .barrow { margin: 14px 0 6px; }
+  .bar { height: 22px; border-radius: 8px; overflow: hidden; background: #e2e8f0; }
+  .bar div { height: 100%; border-radius: 8px; transition: width .8s; }
+  .bar .label { font-size: 11px; padding-left: 8px; color: #fff; line-height: 22px; }
+  .b1 div { background: #ef4444; width: 100%; }
+  .b2 div { background: #22c55e; width: 12%; }
+  .benefits { max-width: 940px; margin: 18px auto 0; display: flex; gap: 14px; }
+  .benefit { flex: 1; background: #fff; border-radius: 14px; padding: 16px; border: 2px solid #bfdbfe; }
+  .benefit .ic { font-size: 32px; }
+  .benefit b { color: #1d4ed8; display: block; margin: 6px 0; }
+  .benefit p { font-size: 13px; color: #64748b; line-height: 1.7; }
+  .note { max-width: 940px; margin: 14px auto 0; background: #fffbeb; border: 2px dashed #fcd34d;
+          border-radius: 12px; padding: 14px 18px; font-size: 13.5px; color: #78350f; line-height: 1.8; }
+</style>
+</head>
+<body>
+<h1>为什么需要 MQ？—— 快递柜的诞生</h1>
+<div class="sub">MQ 教学 stage1/01 · 外卖员给你<b>打电话让你下楼取</b> vs 外卖员把餐<b>放进快递柜</b>。切换两种模式看区别</div>
+
+<div class="modes">
+  <button id="m0" class="on" onclick="mode(0)">😤 没有快递柜（同步调用）</button>
+  <button id="m1" onclick="mode(1)">😄 有了快递柜（引入 MQ）</button>
+</div>
+
+<div class="board">
+  <div class="side bad" id="side0">
+    <h2>😤 外卖员：求求你下楼取餐！</h2>
+    <div class="actor"><span class="face">🛵</span><span class="t"><b>外卖员</b>：<span class="busy">打电话催你——他在楼下干等你 5 分钟</span>（线程被占着）</span></div>
+    <div class="actor"><span class="face">🧍</span><span class="t"><b>你</b>：<span class="busy">正在打游戏，不得不立刻暂停下楼</span>（用户被阻塞）</span></div>
+    <div class="actor"><span class="face">📦</span><span class="t"><b>618 大促</b>：一万个外卖员同时催一万个人下楼——<span class="busy">小区门口瘫痪</span>（洪峰压垮系统）</span></div>
+    <div class="barrow"><div style="color:#dc2626;font-size:12px;margin-bottom:4px">你的等待时间</div>
+      <div class="bar b1"><div class="label">490ms（串行等完所有事）</div></div></div>
+  </div>
+  <div class="side good" id="side1" style="display:none">
+    <h2>😄 外卖员：放快递柜，发取件码，走人</h2>
+    <div class="actor"><span class="face">🛵</span><span class="t"><b>外卖员</b>：<span class="free">5 秒放进柜子就走了</span>（线程立刻释放，接下一单）</span></div>
+    <div class="actor"><span class="face">🧍</span><span class="t"><b>你</b>：<span class="free">收到取件码，打完游戏空了再取</span>（用户不被阻塞）</span></div>
+    <div class="actor"><span class="face">📦</span><span class="t"><b>618 大促</b>：一万单全部进柜子 → <span class="free">你按自己节奏取</span>（洪峰被柜子吸收）</span></div>
+    <div class="barrow"><div style="color:#16a34a;font-size:12px;margin-bottom:4px">你的等待时间</div>
+      <div class="bar b2"><div class="label">52ms（只负责“接单”）</div></div></div>
+  </div>
+</div>
+
+<div class="benefits">
+  <div class="benefit"><div class="ic">⚡</div><b>① 异步提速</b><p>你（主业务）只管“下单”，后面的事（短信/积分/推荐）由快递柜后面的其他快递员慢慢干。</p></div>
+  <div class="benefit"><div class="ic">🔌</div><b>② 解耦</b><p>新开了个生鲜业务？新快递员直接投同一个柜子——<b>你（下单系统）一行代码都不用改</b>。</p></div>
+  <div class="benefit"><div class="ic">🌊</div><b>③ 削峰填谷</b><p>洪峰时柜子先接住，取的人按自己节奏取——<b>后厨永远按“自己的能力”出餐</b>。</p></div>
+</div>
+
+<div class="note">
+  💡 <b>对应到技术</b>：外卖员=你的业务线程；下楼取餐=同步调用下游（短信/积分/推荐服务）；快递柜=<b>MQ 队列</b>；取件码的消费=消费者。
+  mq-mall 和 community 里的 <b>RabbitMQ</b> 就是这套“快递柜系统”。<br>
+  ⚠️ 但快递柜也有代价（这正是引入 MQ 的决策点）：柜子满了要扩容（消息堆积）、餐在柜里凉了怎么办（消息时序/过期）、要盯柜子别被撬（消息可靠性）——<b>这些正是 mq 教学 stage3 整个阶段的主题</b>。
+</div>
+
+<script>
+"use strict";
+function mode(n){
+  document.getElementById("m0").classList.toggle("on", n===0);
+  document.getElementById("m1").classList.toggle("on", n===1);
+  document.getElementById("side0").style.display = n===0 ? "block" : "none";
+  document.getElementById("side1").style.display = n===1 ? "block" : "none";
+}
+</script>
+</body>
+</html>

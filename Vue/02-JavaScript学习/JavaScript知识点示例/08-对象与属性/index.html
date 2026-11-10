@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>对象与属性</title>
+</head>
+<body>
+  <h1>对象与属性</h1>
+  <button id="show-button" type="button">读取学生对象</button>
+  <p id="output"></p>
+
+  <script>
+    const student = {
+      name: '小明',
+      score: 86
+    }
+
+    document.querySelector('#show-button').addEventListener('click', () => {
+      document.querySelector('#output').textContent = student.name + '：' + student.score + ' 分'
+    })
+  </script>
+</body>
+</html>

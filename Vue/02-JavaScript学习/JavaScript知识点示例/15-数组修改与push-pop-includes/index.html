@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>数组修改与 push、pop、includes</title>
+</head>
+<body>
+  <h1>数组修改与 push、pop、includes</h1>
+  <button id="add-button" type="button">push 添加香蕉</button>
+  <button id="remove-button" type="button">pop 删除最后一项</button>
+  <button id="check-button" type="button">includes 检查香蕉</button>
+  <p id="output"></p>
+
+  <script>
+    const fruits = ['苹果']
+    const output = document.querySelector('#output')
+
+    document.querySelector('#add-button').addEventListener('click', () => {
+      fruits.push('香蕉')
+      output.textContent = fruits.join('、')
+    })
+
+    document.querySelector('#remove-button').addEventListener('click', () => {
+      const removed = fruits.pop()
+      output.textContent = '删除：' + removed + '；剩余：' + fruits.join('、')
+    })
+
+    document.querySelector('#check-button').addEventListener('click', () => {
+      output.textContent = '是否包含香蕉：' + fruits.includes('香蕉')
+    })
+  </script>
+</body>
+</html>

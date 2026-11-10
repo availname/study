@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>事件对象与 preventDefault</title>
+</head>
+<body>
+  <h1>事件对象与 preventDefault</h1>
+  <a id="link" href="https://example.com">默认会跳转的链接</a>
+  <p>点击后不会离开当前页面，因为 JavaScript 阻止了链接的默认跳转。</p>
+  <p id="output"></p>
+
+  <script>
+    const link = document.querySelector('#link')
+
+    link.addEventListener('click', (event) => {
+      event.preventDefault()
+      document.querySelector('#output').textContent = [
+        '事件类型：' + event.type,
+        '触发元素 event.target：' + event.target.id,
+        '监听元素 event.currentTarget：' + event.currentTarget.id,
+        '是否已经阻止默认行为：' + event.defaultPrevented
+      ].join('\n')
+    })
+  </script>
+</body>
+</html>

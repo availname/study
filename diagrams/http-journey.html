@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>一次 HTTP 请求的旅程 · 寄快递比喻（容易看懂版）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #f0f9ff; color: #1e293b; padding: 30px; }
+  h1 { color: #0369a1; font-size: 24px; }
+  .sub { color: #0369a1; opacity: .75; font-size: 14px; margin-bottom: 24px; }
+  .path { display: flex; align-items: flex-start; justify-content: center; gap: 0; margin: 30px 0; }
+  .node { text-align: center; width: 104px; position: relative; }
+  .circle { width: 58px; height: 58px; border-radius: 50%; background: #e0f2fe; border: 3px solid #bae6fd;
+            display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto;
+            transition: all .4s; position: relative; z-index: 2; }
+  .node.done .circle { background: #7dd3fc; border-color: #0284c7; }
+  .node.now .circle { background: #0ea5e9; border-color: #0284c7; transform: scale(1.18);
+                      box-shadow: 0 0 0 6px #e0f2fe, 0 0 20px #38bdf866; }
+  .node .lbl { margin-top: 8px; font-size: 12.5px; color: #0369a1; font-weight: bold; }
+  .line { flex: 1; height: 4px; background: #bae6fd; margin-top: 27px; min-width: 30px; border-radius: 2px; }
+  .detail { max-width: 860px; margin: 26px auto; background: #fff; border-radius: 16px; padding: 22px 26px;
+            border: 2px solid #e0f2fe; box-shadow: 0 4px 14px rgba(2,132,199,.1); min-height: 150px; }
+  .detail .big { font-size: 17px; font-weight: bold; color: #0284c7; margin-bottom: 10px; }
+  .detail .meta { font-size: 14.5px; color: #334155; line-height: 1.9; }
+  .detail .life { margin-top: 12px; background: #fff7ed; border-radius: 10px; padding: 10px 16px;
+                  color: #9a3412; font-size: 14px; }
+  .detail .life b { color: #c2410c; }
+  .btns { text-align: center; margin: 20px 0; }
+  .btns button { background: #0284c7; color: #fff; border: none; border-radius: 10px; padding: 11px 26px;
+                 font-size: 15px; cursor: pointer; margin: 0 8px; }
+  .btns button:hover { background: #0369a1; }
+  .btns button:disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+  .btns button.ghost { background: #e2e8f0; color: #475569; }
+</style>
+</head>
+<body>
+<h1>📮 你输入网址后，发生了什么？——一次 HTTP 请求的旅程</h1>
+<div class="sub">网络基础 02 · 生活比喻 = 寄一封挂号快递。点"下一步"看每一站发生了什么</div>
+
+<div class="path" id="path"></div>
+
+<div class="detail" id="detail"></div>
+
+<div class="btns">
+  <button id="next" onclick="nextStep()">下一步 ▶</button>
+  <button onclick="autoPlay()">▶ 自动播放</button>
+  <button class="ghost" onclick="show(0); goTo(0)">↺ 从头看</button>
+</div>
+
+<script>
+"use strict";
+function $(id){ return document.getElementById(id); }
+
+const STEPS = [
+  { icon:"✍️", lbl:"写快递单", big:"① 你在浏览器输入网址并回车",
+    meta:"浏览器准备好一封“请求信”：我要 <b>GET https://www.taobao.com</b> 的首页内容。",
+    life:"生活比喻：<b>你写好了信，准备寄出</b>——但信封上还缺一个关键信息：收件地址。" },
+  { icon:"📖", lbl:"查通讯录", big:"② DNS 解析：查地址",
+    meta:"浏览器问 DNS 服务器：“taobao.com 的 IP 地址是多少？” → 得到 <b>140.82.x.x</b>。",
+    life:"生活比喻：<b>查通讯录</b>——你知道朋友的名字，但寄快递需要门牌地址。DNS 就是全网通用的“域名→IP 地址”通讯录。" },
+  { icon:"📞", lbl:"接通电话", big:"③ TCP 三次握手：接通专线",
+    meta:"和服务器完成三次握手（上一步演示过：喂？—听得到你吗？—听得到！），建立可靠的传输通道。",
+    life:"生活比喻：<b>打电话接通</b>——确认双方都能听到对方，才开始说正事。" },
+  { icon:"🔐", lbl:"上锁", big:"④ TLS 握手：给信封上锁（HTTPS 才有）",
+    meta:"交换证书验证身份 + 协商出对称密钥——之后的所有数据都是<b>加密传输</b>，中间人看不到内容。",
+    life:"生活比喻：<b>你们先互相寄了一把锁和开锁钥匙</b>，之后所有信件都放进带锁的箱子寄——路上没人能拆开看。" },
+  { icon:"📨", lbl:"寄出请求", big:"⑤ 发送 HTTP 请求",
+    meta:"请求信正式寄出：请求方法 GET + 路径 + 请求头（Cookie/浏览器信息…）。服务器网卡收到字节流。",
+    life:"生活比喻：<b>快递正式发出</b>——经过一串中转站（路由器），每站只看地址不看内容。" },
+  { icon:"🖥️", lbl:"对方拆信", big:"⑥ 服务器处理",
+    meta:"服务器拆开请求：解析方法与路径 → 查数据库（可能先查 Redis 缓存）→ 组装响应（状态码 200 + JSON/HTML）。",
+    life:"生活比喻：<b>对方收到信、读内容、写回信</b>——这一步的耗时就是“服务器处理时间”。" },
+  { icon:"📬", lbl:"收到回信", big:"⑦ 响应返回",
+    meta:"响应沿着原路返回：状态码 200 OK + 响应头（Cookie/内容类型）+ 响应体（网页数据）。",
+    life:"生活比喻：<b>对方把回信塞进你寄信时留的信封寄回</b>——信封上贴着“内容类型”标签。" },
+  { icon:"🎨", lbl:"拆信读内容", big:"⑧ 浏览器渲染页面",
+    meta:"浏览器解析 HTML → 加载 CSS/图片 → 渲染成你看到的页面。旅程结束，但你输入新网址又会开始新旅程。",
+    life:"生活比喻：<b>你拆开回信，读到了内容</b>——一次完整的通信结束。" }
+];
+
+function buildPath(){
+  const box = $("path");
+  box.innerHTML = "";
+  STEPS.forEach((s, i) => {
+    if (i > 0) { const l = document.createElement("div"); l.className = "line"; box.appendChild(l); }
+    const n = document.createElement("div");
+    n.className = "node"; n.id = "node" + i;
+    n.innerHTML = `<div class="circle">${s.icon}</div><div class="lbl">${s.lbl}</div>`;
+    box.appendChild(n);
+  });
+}
+function show(i){
+  const s = STEPS[i];
+  STEPS.forEach((_, k) => {
+    $("node"+k).className = "node" + (k < i ? " done" : k === i ? " now" : "");
+  });
+  $("detail").innerHTML = `<div class="big">${s.big}</div><div class="meta">${s.meta}</div><div class="life">${s.life}</div>`;
+  $("next").disabled = (i >= STEPS.length - 1);
+}
+let idx = 0;
+function nextStep(){ if(idx < STEPS.length - 1){ idx++; show(idx); } }
+function goTo(i){ idx = i; show(i); }
+function autoPlay(){
+  const t = setInterval(() => {
+    if (idx >= STEPS.length - 1) { clearInterval(t); return; }
+    idx++; show(idx);
+  }, 1800);
+  $("next").disabled = true;
+  setTimeout(() => { $("next").disabled = false; }, STEPS.length * 1800);
+}
+buildPath(); show(0);
+</script>
+</body>
+</html>

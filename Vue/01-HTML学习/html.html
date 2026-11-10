@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>我的 HTML 学习资料</title>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>我的 HTML 学习资料</h1>
+      <p>这是我使用 HTML 标签组合出来的第一个完整页面。</p>
+
+      <nav>
+        <a href="#progress">学习进度</a>
+        <a href="#feedback">学习反馈</a>
+      </nav>
+    </header>
+
+    <main>
+    <article>
+      <h2>今天的学习主题</h2>
+      <p>HTML 使用标签描述页面结构，语义标签可以让页面区域的含义更加清楚。</p>
+    </article>
+
+    <aside>
+      <h2>学习提示</h2>
+      <p>article 是独立内容，aside 是补充内容；它们默认不会自动产生布局样式。</p>
+    </aside>
+
+    <section>
+      <h2>文字和媒体标签</h2>
+      <p>
+        这是普通文字，<span>这是被 span 单独标记的文字</span>。
+        <br />
+        这是换行后的文字。
+      </p>
+      <p><strong>这是重要文字。</strong></p>
+      <p><em>这是需要强调的文字。</em></p>
+      <hr />
+      <p>下面只展示视频和音频标签，暂时没有添加媒体文件。</p>
+      <video controls>
+        浏览器不支持 video 标签。
+      </video>
+      <audio controls>
+        浏览器不支持 audio 标签。
+      </audio>
+    </section>
+
+    <section>
+      <h2>我已经学习的内容</h2>
+      <p>HTML 用标签描述网页的结构。</p>
+      <ul>
+        <li>标题和段落</li>
+        <li>容器和内容区域</li>
+        <li>列表和链接</li>
+        <li>图片和表单</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>我的学习顺序</h2>
+      <ol>
+        <li>先写 HTML 页面结构</li>
+        <li>再添加页面内容</li>
+        <li>最后检查标签是否正确嵌套</li>
+      </ol>
+    </section>
+
+    <section id="progress">
+      <h2>我的学习进度</h2>
+      <table border="1">
+        <caption>HTML 学习进度表</caption>
+        <tr>
+          <th>知识分类</th>
+          <th>学习状态</th>
+        </tr>
+        <tr>
+          <td>HTML 基础标签</td>
+          <td>已学习</td>
+        </tr>
+        <tr>
+          <td>CSS 样式</td>
+          <td>还未学习</td>
+        </tr>
+      </table>
+    </section>
+
+    <section>
+      <h2>有用的链接</h2>
+      <p>
+        <a href="https://developer.mozilla.org/zh-CN/docs/Web/HTML">
+          查看 MDN HTML 文档
+        </a>
+      </p>
+      <p>
+        <a href="./学习记忆.md">查看我的 HTML 学习笔记</a>
+      </p>
+    </section>
+
+    <!--
+    <section>
+      <h2>图片</h2>
+      <img
+        src="https://placehold.co/320x180?text=HTML+Learning"
+        alt="HTML 学习示例图片"
+        width="320"
+      />
+    </section>
+    -->
+
+    <section id="feedback">
+      <h2>学习反馈</h2>
+      <form action="#" method="get">
+        <p>
+          <label for="username">你的名字：</label>
+          <input
+            id="username"
+            name="username"
+            type="text"
+            placeholder="请输入名字"
+          />
+        </p>
+
+        <p>
+          <label for="lesson">已经学会的标签：</label>
+          <input
+            id="lesson"
+            name="lesson"
+            type="text"
+            placeholder="例如：section"
+          />
+        </p>
+
+        <p>
+          <label for="feedback-text">学习感受：</label>
+          <br />
+          <textarea
+            id="feedback-text"
+            name="feedback"
+            rows="4"
+            cols="30"
+            placeholder="请输入学习感受"
+          ></textarea>
+        </p>
+
+        <p>
+          <label for="level">当前 HTML 学习程度：</label>
+          <select id="level" name="level">
+            <option value="beginner">刚开始学习</option>
+            <option value="basic">已经学过基础标签</option>
+            <option value="practice">正在练习综合页面</option>
+          </select>
+        </p>
+
+        <button type="submit">提交学习反馈</button>
+        <button type="reset">清空输入</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>普通按钮</h2>
+      <p>这个按钮现在只负责显示，后面学习 JavaScript 后再给它添加动作。</p>
+      <button type="button">普通按钮</button>
+    </section>
+    </main>
+
+    <footer>
+      <p>HTML 学习页面底部</p>
+    </footer>
+  </div>
+</body>
+</html>

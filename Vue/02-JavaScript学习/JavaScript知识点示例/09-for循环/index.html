@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>for 循环</title>
+</head>
+<body>
+  <h1>for 循环</h1>
+  <button id="run-button" type="button">循环五次</button>
+  <ul id="output"></ul>
+
+  <script>
+    document.querySelector('#run-button').addEventListener('click', () => {
+      const output = document.querySelector('#output')
+      output.textContent = ''
+
+      for (let index = 1; index <= 5; index = index + 1) {
+        const item = document.createElement('li')
+        item.textContent = '第 ' + index + ' 次循环'
+        output.appendChild(item)
+      }
+    })
+  </script>
+</body>
+</html>

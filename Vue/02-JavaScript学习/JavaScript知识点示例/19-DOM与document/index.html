@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>DOM 与 document</title>
+</head>
+<body>
+  <h1>DOM 与 document</h1>
+  <p id="message">这是 HTML 中的 p 标签。</p>
+  <button id="change-button" type="button">通过 document 修改</button>
+
+  <script>
+    const message = document.querySelector('#message')
+
+    document.querySelector('#change-button').addEventListener('click', () => {
+      message.textContent = 'document 找到了 p，JavaScript 修改了它。'
+    })
+  </script>
+</body>
+</html>

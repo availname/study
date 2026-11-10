@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>G1 垃圾回收 · JVM 03</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 26px; }
+  h1 { color: #7dd3fc; font-size: 21px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 16px; }
+  .controls { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .controls button { background: #1e40af; color: #dbeafe; border: none; border-radius: 8px; padding: 9px 16px;
+                     font-size: 13px; cursor: pointer; }
+  .controls button:hover { background: #3b82f6; }
+  .controls button.warn { background: #92400e; color: #fde68a; }
+  .controls button.warn:hover { background: #d97706; }
+  .controls button.red { background: #7f1d1d; color: #fecaca; }
+  .grid { display: grid; grid-template-columns: repeat(16, 1fr); gap: 4px; max-width: 960px; }
+  .region { aspect-ratio: 1; border-radius: 4px; background: #1e293b; border: 1px solid #334155;
+            display: flex; align-items: center; justify-content: center; font-size: 10px; color: #94a3b8; }
+  .region.eden     { background: #0e7490; color: #a5f3fc; }
+  .region.survivor { background: #1d4ed8; color: #bfdbfe; }
+  .region.old      { background: #5b21b6; color: #ddd6fe; }
+  .region.humongous{ background: #7f1d1d; color: #fecaca; }
+  .legend { display: flex; gap: 14px; margin: 14px 0; font-size: 12px; color: #94a3b8; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .stats { display: flex; gap: 22px; margin: 14px 0; font-size: 13px; color: #94a3b8; flex-wrap: wrap; }
+  .stats b { color: #a5f3fc; }
+  .log { max-width: 960px; background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 10px;
+         font-size: 12.5px; min-height: 130px; }
+  .log div { padding: 2px 0; color: #94a3b8; }
+  .log .g { color: #34d399; } .log .y { color: #fbbf24; } .log .r { color: #f87171; }
+</style>
+</head>
+<body>
+<h1>G1 垃圾回收交互演示（Region 化的堆）</h1>
+<div class="sub">JVM 03 · 堆切成等大 Region（96 个），每个 Region 动态扮演角色；"Garbage First" = 优先回收垃圾占比最高的 Region</div>
+
+<div class="controls">
+  <button onclick="allocate(10)">📥 分配对象（Eden +10%）</button>
+  <button onclick="allocate(40)">📥 大量分配（Eden +40%）</button>
+  <button onclick="minorGC()">⚡ Minor GC</button>
+  <button class="warn" onclick="mixedGC()">🧹 Mixed GC（老年代并发整理）</button>
+  <button class="red" onclick="reset()">↺ 重置</button>
+</div>
+
+<div class="legend">
+  <span><span class="dot" style="background:#0e7490"></span>Eden</span>
+  <span><span class="dot" style="background:#1d4ed8"></span>Survivor</span>
+  <span><span class="dot" style="background:#5b21b6"></span>Old</span>
+  <span><span class="dot" style="background:#7f1d1d"></span>Humongous（大对象直进）</span>
+  <span><span class="dot" style="background:#1e293b"></span>空闲 Region</span>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="stats" id="stats"></div>
+<div class="log" id="logEl"></div>
+
+<script>
+"use strict";
+// 统计级模型（每个数字=该区占总堆的百分比）
+let eden = 0, survivor = 0, oldFill = 0, humongous = 0;
+let minorCount = 0, mixedCount = 0, fullCount = 0;
+let logs = [];
+
+function render(){
+  const grid = document.getElementById("grid");
+  const regions = [];
+  // Eden 24 格 / Survivor 12 格 / Old 60 格（映射占比到格子亮度）
+  const edenPer = eden / 24, survPer = survivor / 12, oldPer = oldFill / 60;
+  for (let i = 0; i < 24; i++) {
+    const f = Math.min(100, Math.round(edenPer + Math.random() * 12));
+    regions.push(`<div class="region eden">${f > 3 ? f + "%" : ""}</div>`);
+  }
+  for (let i = 0; i < 12; i++) {
+    const f = Math.min(100, Math.round(survPer + Math.random() * 8));
+    regions.push(`<div class="region survivor">${f > 3 ? f + "%" : ""}</div>`);
+  }
+  for (let i = 0; i < 60; i++) {
+    const f = Math.min(100, Math.round(oldPer + Math.random() * 10));
+    regions.push(`<div class="region old">${f > 3 ? f + "%" : ""}</div>`);
+  }
+  grid.innerHTML = regions.join("");
+  document.getElementById("stats").innerHTML =
+    `Eden <b>${Math.round(eden)}%</b> · Survivor <b>${Math.round(survivor)}%</b> · Old <b>${Math.round(oldFill)}%</b> · ` +
+    `Minor GC <b>${minorCount}</b> 次 · Mixed GC <b>${mixedCount}</b> 次 · Full GC <b>${fullCount}</b> 次`;
+}
+function addLog(t, cls){
+  logs.unshift({ t, cls });
+  logs = logs.slice(0, 10);
+  document.getElementById("logEl").innerHTML =
+    logs.map(l => `<div class="${l.cls||''}">${l.t}</div>`).join("");
+}
+
+function allocate(pct){
+  eden += pct;
+  let note = "";
+  if (eden >= 100) {                      // Eden 满 → 自动触发 Minor GC
+    eden = 100;
+    note = " → Eden 已满，自动触发 Minor GC";
+    minorGC();
+  }
+  addLog(`分配对象：Eden ${Math.round(eden)}%${note}`, "y");
+  render();
+}
+function minorGC(){
+  minorCount++;
+  const survivors = Math.round(eden * 0.2);   // 假设 20% 对象存活
+  eden = 0;
+  survivor += survivors;                      // 进 Survivor
+  // Survivor 满 → 晋升老年代（含动态年龄判断的简化）
+  const promote = Math.max(0, survivor - 60);
+  if (promote > 0) {
+    oldFill += promote;
+    survivor = 60;
+    addLog(`Minor GC#${minorCount}：Eden 清空，存活 ${survivors}% 进 Survivor；Survivor 满 → 晋升 Old ${promote}%`, "y");
+  } else {
+    addLog(`Minor GC#${minorCount}：存活 ${survivors}% 进 Survivor（Eden 清空）`);
+  }
+  if (oldFill >= 90) {                        // 老年代逼近满 → 触发 Mixed GC（G1 行为）
+    addLog("Old 占比超 45% → G1 触发 Mixed GC（并发标记后挑垃圾最多的老年代 Region 收集）", "y");
+    mixedGC();
+  }
+  render();
+}
+function mixedGC(){
+  mixedCount++;
+  const reclaim = Math.min(oldFill * 0.4, 40);        // 挑垃圾比例最高的老年代 Region，回收 40% 容量
+  oldFill -= reclaim;
+  addLog(`Mixed GC#${mixedCount}：整理老年代 Region，回收 ${Math.round(reclaim)}% 堆空间`, "g");
+  render();
+}
+function reset(){
+  eden = 0; survivor = 0; oldFill = 0; humongous = 0;
+  minorCount = 0; mixedCount = 0; fullCount = 0;
+  logs = [];
+  addLog("堆已重置（Eden/Survivor/Old 归零）");
+  render();
+}
+reset();
+</script>
+</body>
+</html>

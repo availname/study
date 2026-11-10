@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>classList</title>
+</head>
+<body>
+  <h1>classList</h1>
+  <p id="target" class="normal-text">这是被操作的元素。</p>
+  <button id="add-button" type="button">add active</button>
+  <button id="remove-button" type="button">remove active</button>
+  <button id="toggle-button" type="button">toggle active</button>
+  <button id="contains-button" type="button">contains active</button>
+  <button id="replace-button" type="button">replace class</button>
+  <p id="output"></p>
+
+  <script>
+    const target = document.querySelector('#target')
+    const output = document.querySelector('#output')
+    const showClass = (message) => {
+      output.textContent = message + '；当前 class：' + target.className
+    }
+
+    document.querySelector('#add-button').addEventListener('click', () => {
+      target.classList.add('active')
+      showClass('已经添加 active')
+    })
+
+    document.querySelector('#remove-button').addEventListener('click', () => {
+      target.classList.remove('active')
+      showClass('已经删除 active')
+    })
+
+    document.querySelector('#toggle-button').addEventListener('click', () => {
+      const exists = target.classList.toggle('active')
+      showClass('切换结果：' + exists)
+    })
+
+    document.querySelector('#contains-button').addEventListener('click', () => {
+      showClass('是否存在 active：' + target.classList.contains('active'))
+    })
+
+    document.querySelector('#replace-button').addEventListener('click', () => {
+      const replaced = target.classList.replace('normal-text', 'highlight-text')
+      showClass('替换结果：' + replaced)
+    })
+  </script>
+</body>
+</html>

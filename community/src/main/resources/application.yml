@@ -1,0 +1,44 @@
+server:
+  port: 8082
+
+spring:
+  threads:
+    virtual:
+      enabled: true    # stage6/01：虚拟线程——HTTP请求/定时任务/MQ消费全部跑在虚拟线程上（JDK21+Boot3.2）
+  datasource:
+    url: jdbc:mysql://localhost:3307/community?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root123
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema.sql
+  data:
+    redis:
+      host: localhost
+      port: 6381                # redis 教学容器（redis-learn）；与 mq-mall 的 6380 独立
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+  rabbitmq:
+    host: localhost
+    port: 5673                  # 复用 mq-mall 的 RabbitMQ 容器
+    username: guest
+    password: guest
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        prefetch: 10
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 500
+          multiplier: 2
+
+logging:
+  level:
+    com.example.community: INFO

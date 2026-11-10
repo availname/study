@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>TCP 握手挥手 · 打电话比喻（容易看懂版）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #fefce8; color: #1e293b; padding: 30px; }
+  h1 { color: #0f766e; font-size: 24px; }
+  .sub { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+  .tabs button { background: #e2e8f0; color: #475569; border: none; border-radius: 20px;
+                 padding: 9px 20px; font-size: 14px; cursor: pointer; margin-right: 10px; }
+  .tabs button.on { background: #0f766e; color: #fff; }
+  .scene { position: relative; height: 340px; max-width: 900px; margin: 10px auto; }
+  .person { position: absolute; top: 20px; width: 160px; text-align: center; }
+  .person .face { font-size: 56px; }
+  .person .name { font-size: 16px; font-weight: bold; color: #0f766e; margin-top: 4px; }
+  .person.left { left: 40px; }
+  .person.right { right: 40px; }
+  .bubble { position: absolute; max-width: 330px; padding: 12px 18px; border-radius: 18px;
+            font-size: 15px; line-height: 1.5; opacity: 0; transform: translateY(10px);
+            transition: all .5s; box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  .bubble.show { opacity: 1; transform: translateY(0); }
+  .bubble.c { background: #dbeafe; color: #1e3a5f; left: 120px; border-top-left-radius: 4px; }
+  .bubble.s { background: #dcfce7; color: #14532d; right: 120px; border-top-right-radius: 4px; }
+  .bubble small { display: block; color: #94a3b8; font-size: 11.5px; margin-top: 4px; }
+  .explain { max-width: 900px; margin: 8px auto; background: #fff; border: 2px solid #ccfbf1;
+             border-radius: 14px; padding: 16px 20px; font-size: 14.5px; line-height: 1.8;
+             min-height: 90px; color: #334155; box-shadow: 0 2px 10px rgba(15,118,110,.08); }
+  .explain b { color: #0f766e; }
+  .ctrl { text-align: center; margin: 14px 0; }
+  .ctrl button { background: #0f766e; color: #fff; border: none; border-radius: 10px;
+                 padding: 11px 26px; font-size: 15px; cursor: pointer; margin: 0 6px; }
+  .ctrl button:hover { background: #0d9488; }
+  .ctrl button:disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
+  .reason { background: #fff7ed; border: 2px dashed #fdba74; border-radius: 12px; padding: 14px 18px;
+            max-width: 900px; margin: 14px auto; font-size: 14px; color: #7c2d12; line-height: 1.8; }
+  .reason b { color: #c2410c; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<h1>📞 TCP 握手与挥手 = 打一通电话</h1>
+<div class="sub">网络基础 01 · 左边是你（客户端），右边是淘宝服务器（服务端）。点"下一步"看每一句话</div>
+
+<div class="tabs">
+  <button id="tab1" class="on" onclick="load(0)">📞 三次握手 = 接通电话</button>
+  <button id="tab2" onclick="load(1)">👋 四次挥手 = 说再见</button>
+</div>
+
+<!-- 三次握手场景 -->
+<div id="scene1">
+  <div class="scene">
+    <div class="person left"><div class="face">🙋‍♂️</div><div class="name">你（客户端）</div></div>
+    <div class="person right"><div class="face">🖥️</div><div class="name">淘宝服务器（服务端）</div></div>
+    <div class="bubble c" id="h1" style="top:110px">喂？听得到我说话吗？<small>SYN —— 我要建立连接</small></div>
+    <div class="bubble s" id="h2" style="top:185px">听得到！你听得到我吗？<small>SYN+ACK —— 收到，我也发起连接</small></div>
+    <div class="bubble c" id="h3" style="top:262px">听得到！咱们开始聊吧<small>ACK —— 双方确认完毕，连接建立 ✓</small></div>
+  </div>
+  <div class="explain" id="hexplain">
+    <b>点击"下一步"开始通话。</b>三次握手 = 确认"<b>我说的你能收到，你说的我也能收到</b>"——两边都验证过，才开始正式传输数据。
+  </div>
+  <div class="reason hidden" id="hwhy">
+    <b>💡 为什么必须三次？两次行不行？</b><br>
+    假如只有两次（你问 + 对方答就建立）：你早年发过一条"迷路了 10 年的旧电话请求"今天才到淘宝——淘宝一接就傻等你说数据，但这条连接早已作废。<b>第三次（你再回应一句）就是过滤这种"过期来电"</b>——你回应了说明你是"现在活着"的请求。
+  </div>
+</div>
+
+<!-- 四次挥手场景 -->
+<div id="scene2" class="hidden">
+  <div class="scene">
+    <div class="person left"><div class="face">🙋‍♂️</div><div class="name">你（说完了的一方）</div></div>
+    <div class="person right"><div class="face">🖥️</div><div class="name">淘宝服务器（还差一点没说完）</div></div>
+    <div class="bubble c" id="w1" style="top:96px">我说完了，挂了吧<small>FIN —— 我不再发送数据</small></div>
+    <div class="bubble s" id="w2" style="top:160px">好的，知道了（等我一下，我还有最后一点没说完…）<small>ACK —— 确认你的结束请求</small></div>
+    <div class="bubble s" id="w3" style="top:232px">我也说完了<small>FIN —— 我也不再发送了</small></div>
+    <div class="bubble c" id="w4" style="top:304px">好的，再见<small>ACK —— 确认，进入 TIME_WAIT 等 2 分钟再挂断</small></div>
+  </div>
+  <div class="explain" id="wexplain">
+    <b>为什么挥手要四次（比握手多一次）？</b>打电话是<b>全双工</b>——两个人可以同时说话。你说完了不代表对方说完了：对方收到你的"说完了"后，可能<b>还有最后几句没讲完</b>——所以"我知道了(ACK)"和"我也说完了(FIN)"要分开两次说。<br>
+    <b>为什么最后你要等 2 分钟再挂（TIME_WAIT）？</b>怕你最后那句"再见"没传到——如果对方没听到会再喊一遍"我说完了"，你还能补一句"再见"。等 2 分钟确保万无一失（这是 Linux 默认 60 秒 TIME_WAIT 的由来）。
+  </div>
+</div>
+
+<div class="ctrl">
+  <button id="next" onclick="nextStep()">下一步 ▶</button>
+  <button onclick="load(cur)">↺ 重新演示</button>
+</div>
+
+<script>
+"use strict";
+const SCRIPTS = {
+  0: [
+    { bubble:"h1", show:["hwhy"],
+      text:"【第一次】你（客户端）拨通电话问一句：“听得到吗？”——这一步在网络上就是发送 SYN 包，表示“我想建立连接”。" },
+    { bubble:"h2", show:["hwhy"],
+      text:"【第二次】淘宝听到后回答：“听得到！你听得到我吗？”——SYN+ACK 一个包里带了两个意思（确认你+发起自己）。" },
+    { bubble:"h3", show:["hwhy"],
+      text:"【第三次】你再回一句“听得到！”——到此两边都确认了：我说的话对方能收到，对方说的话我也能收到。<b>连接正式建立，开始传输网页数据。</b>" }
+  ],
+  1: [
+    { bubble:"w1", show:["wexplain"],
+      text:"【第一次挥手】你逛完了说“我说完了”（FIN）。注意：只是你不说了，<b>对方可能还有数据没发完</b>。" },
+    { bubble:"w2", show:["wexplain"],
+      text:"【第二次挥手】淘宝回“知道了”（ACK）。但请注意——<b>它还没挂电话</b>，因为它还有最后一点数据要发。" },
+    { bubble:"w3", show:["wexplain"],
+      text:"【第三次挥手】淘宝把最后的数据发完了：“我也说完了”（FIN）。" },
+    { bubble:"w4", show:["wexplain"],
+      text:"【第四次挥手】你回“好的再见”（ACK）——然后进入 TIME_WAIT，<b>等 2 分钟才真正挂断</b>。" }
+  ]
+};
+let cur = 0, idx = 0;
+
+function $(id){ return document.getElementById(id); }
+function load(n){
+  cur = n; idx = 0;
+  $("tab1").classList.toggle("on", n===0);
+  $("tab2").classList.toggle("on", n===1);
+  $("scene1").classList.toggle("hidden", n!==0);
+  $("scene2").classList.toggle("hidden", n!==1);
+  $("h1").classList.remove("show"); $("h2").classList.remove("show"); $("h3").classList.remove("show");
+  $("w1").classList.remove("show"); $("w2").classList.remove("show");
+  $("w3").classList.remove("show"); $("w4").classList.remove("show");
+  $("hwhy").classList.add("hidden"); $("wexplain").classList.add("hidden");
+  $("next").disabled = false;
+  showStep();
+}
+function showStep(){
+  const steps = SCRIPTS[cur];
+  if (idx >= steps.length){ $("next").disabled = true; return; }
+  const s = steps[idx];
+  if (s.show) s.show.forEach(id => $(id).classList.remove("hidden"));
+  const el = $(s.bubble);
+  el.classList.add("show");
+  if (cur === 0 && idx === 2) $("hwhy").classList.remove("hidden");
+  if (cur === 1 && idx === 3) $("wexplain").classList.remove("hidden");
+  const ex = cur === 0 ? $("hexplain") : $("wexplain");
+  ex.innerHTML = `<b>第 ${idx+1} 步</b> · ` + s.text;
+}
+function nextStep(){ idx++; showStep(); }
+load(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Promise、async、await</title>
+</head>
+<body>
+  <h1>Promise、async、await</h1>
+  <button id="load-button" type="button">等待异步结果</button>
+  <p id="output"></p>
+
+  <script>
+    function loadMessage() {
+      return new Promise((resolve, reject) => {
+        setTimeout(() => resolve('异步任务完成'), 1000)
+      })
+    }
+
+    document.querySelector('#load-button').addEventListener('click', async () => {
+      const output = document.querySelector('#output')
+      output.textContent = '等待中...'
+
+      try {
+        const message = await loadMessage()
+        output.textContent = message
+      } catch (error) {
+        output.textContent = '异步任务失败：' + error.message
+      }
+    })
+  </script>
+</body>
+</html>

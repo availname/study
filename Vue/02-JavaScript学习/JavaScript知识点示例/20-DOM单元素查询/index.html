@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>DOM 单元素查询</title>
+</head>
+<body>
+  <h1>DOM 单元素查询</h1>
+  <p id="first-message" class="message">第一个段落</p>
+  <p class="message">第二个段落</p>
+  <button id="id-button" type="button">使用 getElementById</button>
+  <button id="selector-button" type="button">使用 querySelector</button>
+  <button id="missing-button" type="button">查询不存在的元素</button>
+  <pre id="output"></pre>
+
+  <script>
+    const output = document.querySelector('#output')
+
+    document.querySelector('#id-button').addEventListener('click', () => {
+      const byId = document.getElementById('first-message')
+
+      byId.textContent = 'getElementById 找到了我'
+      output.textContent = "使用的参数：'first-message'\n找到的标签：" + byId.tagName
+    })
+
+    document.querySelector('#selector-button').addEventListener('click', () => {
+      const bySelector = document.querySelector('.message')
+
+      bySelector.textContent = 'querySelector 找到了第一个 .message'
+      output.textContent = "使用的选择器：'.message'\n找到的文字：" + bySelector.textContent
+    })
+
+    document.querySelector('#missing-button').addEventListener('click', () => {
+      const missingElement = document.querySelector('#not-exist')
+
+      output.textContent = '查询不存在的元素，得到：' + missingElement
+    })
+  </script>
+</body>
+</html>

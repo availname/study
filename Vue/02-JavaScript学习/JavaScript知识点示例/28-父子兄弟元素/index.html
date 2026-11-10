@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>父子兄弟元素</title>
+</head>
+<body>
+  <h1>父子兄弟元素</h1>
+  <section id="parent">
+    <p>第一个子元素</p>
+    <p id="current">当前元素</p>
+    <p>下一个兄弟元素</p>
+    <input id="child-input" type="text" value="来自子元素的数据" />
+    <button id="child-button" type="button">子元素发送数据</button>
+    <p id="child-message">等待父元素修改</p>
+  </section>
+  <button id="parent-button" type="button">父元素修改子元素</button>
+  <button id="read-button" type="button">读取结构关系</button>
+  <pre id="output"></pre>
+
+  <script>
+    const parent = document.querySelector('#parent')
+    const childInput = document.querySelector('#child-input')
+    const childMessage = document.querySelector('#child-message')
+    const output = document.querySelector('#output')
+
+    document.querySelector('#parent-button').addEventListener('click', () => {
+      const child = parent.querySelector('#child-message')
+      child.textContent = '父元素通过 parent.querySelector() 修改了子元素。'
+    })
+
+    parent.addEventListener('click', (event) => {
+      if (event.target.id !== 'child-button') {
+        return
+      }
+
+      output.textContent = [
+        '父元素收到了子元素的数据：' + childInput.value,
+        'event.target：' + event.target.id,
+        'event.currentTarget：' + event.currentTarget.id
+      ].join('\n')
+    })
+
+    document.querySelector('#read-button').addEventListener('click', () => {
+      const current = document.querySelector('#current')
+
+      output.textContent = [
+        '当前元素：' + current.tagName,
+        '父元素：' + parent.tagName,
+        '子元素数量：' + parent.children.length,
+        '第一个子元素：' + parent.children[0].textContent,
+        '上一个兄弟：' + current.previousElementSibling.textContent,
+        '下一个兄弟：' + current.nextElementSibling.textContent
+      ].join('\n')
+    })
+  </script>
+</body>
+</html>

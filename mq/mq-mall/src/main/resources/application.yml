@@ -1,0 +1,63 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: mq-mall
+
+  datasource:
+    url: jdbc:mysql://localhost:3307/mq_mall?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root123
+    hikari:
+      maximum-pool-size: 10
+
+  # 启动时自动执行 schema.sql（CREATE TABLE IF NOT EXISTS，可重复启动）
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+
+  data:
+    redis:
+      host: localhost
+      port: 6380
+
+  rabbitmq:
+    host: localhost
+    port: 5673
+    username: guest
+    password: guest
+    # ---- 生产端可靠性（教程 stage2/03、stage3/01）----
+    publisher-confirm-type: correlated   # Confirm：Broker 收到后异步回执
+    publisher-returns: true              # Return：路由不到队列时退回
+    # ---- 消费端：手动有限重试 + 耗尽进死信（stage3/01、stage3/05）----
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false  # 重试耗尽不重回队列 → 死信
+        prefetch: 10
+        concurrency: 1
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 500
+          multiplier: 2                  # 0.5s → 1s → 2s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  level:
+    com.example.mqmall: INFO
+
+# ---- 业务参数 ----
+mq:
+  mall:
+    # 订单超时时间（同时用于延迟队列 TTL 和扫表兜底阈值；演示 2 分钟，生产 30 分钟）
+    order-timeout-ms: 120000
+    # 秒杀 Redis 预扣库存初始化量
+    seckill-stock: 1000

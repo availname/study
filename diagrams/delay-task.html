@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>延迟任务双保险动画 · 延迟消息 vs 扫表兜底 · mq stage4/02</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 26px; }
+  h1 { color: #7dd3fc; font-size: 21px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 14px; }
+  .fsm { background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; }
+  .fsm h3 { color: #7dd3fc; font-size: 14px; margin-bottom: 10px; }
+  .states { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .state { border: 2px solid #475569; border-radius: 10px; padding: 8px 16px; text-align: center;
+           font-size: 13px; color: #cbd5e1; transition: all .4s; }
+  .state .big { font-size: 18px; font-weight: bold; display: block; }
+  .state.cur { border-color: #38bdf8; background: #1c3d5a; color: #bae6fd; transform: scale(1.06); }
+  .state.paid { border-color: #34d399; background: #14532d; color: #86efac; }
+  .state.closed { border-color: #fbbf24; background: #78350f; color: #fcd34d; }
+  .trans { color: #64748b; font-size: 12px; }
+  .btns { margin-bottom: 14px; }
+  .btns button { background: #1e40af; color: #dbeafe; border: none; border-radius: 8px; padding: 9px 16px;
+                 font-size: 13px; cursor: pointer; margin: 0 10px 10px 0; }
+  .btns button:hover { background: #3b82f6; }
+  .btns button.reset { background: #7f1d1d; color: #fecaca; }
+  .arena { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .actor { flex: 1; min-width: 210px; background: #1e293b; border: 2px solid #334155; border-radius: 12px;
+           padding: 12px; transition: opacity .4s; }
+  .actor h3 { font-size: 13px; margin-bottom: 10px; color: #94a3b8; }
+  .actor.biz h3 { color: #38bdf8; } .actor.mq h3 { color: #c084fc; }
+  .actor.sweep h3 { color: #fbbf24; }
+  .actor.dim { opacity: .45; }
+  .step { background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 7px 9px;
+          font-size: 12px; color: #94a3b8; margin-bottom: 7px; min-height: 36px; font-family: Consolas, monospace; }
+  .step.hit { border-color: #34d399; color: #86efac; }
+  .step.miss { border-color: #f87171; color: #fca5a5; }
+  .step.run { border-color: #fbbf24; }
+  .step.warn { border-color: #c084fc; color: #d8b4fe; }
+  .verdict { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 12px;
+             font-size: 13px; min-height: 84px; margin-bottom: 12px; color: #94a3b8; }
+  .verdict .ok { color: #34d399; } .verdict .no { color: #f87171; } .verdict .warn { color: #fcd34d; }
+  .log { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 10px;
+         font-size: 12.5px; color: #94a3b8; min-height: 56px; }
+  .log div { padding: 2px 0; }
+</style>
+</head>
+<body>
+<h1>延迟任务双保险动画：延迟消息 vs 扫表兜底</h1>
+<div class="sub">mq stage4/02 / 延迟任务方案横向对比 · mq-mall 超时关单的完整防线——主路径丢了谁来兜？重复了怎么办？</div>
+
+<div class="fsm">
+  <h3>订单状态机（CAS：只有待支付能被关/被付）</h3>
+  <div class="states">
+    <div class="state" id="s10"><span class="big">待支付</span>status=10</div>
+    <span class="trans">──支付 CAS──→</span>
+    <div class="state" id="s20"><span class="big">已支付</span>status=20</div>
+    <span class="trans">　　┆超时关单 CAS┆</span>
+    <div class="state" id="s50"><span class="big">已关闭</span>status=50</div>
+    <span class="trans">←──两条路都能到，只能活一个──</span>
+  </div>
+</div>
+
+<div class="btns">
+  <button onclick="run('normal')">① 正常路径：延迟消息准时关单</button>
+  <button onclick="run('lost')">② 延迟消息丢了 → 扫表兜底</button>
+  <button onclick="run('race')">③ 双路同时到 → CAS 仲裁</button>
+  <button onclick="run('paid')">④ 用户先支付 → 两路全落空</button>
+  <button class="reset" onclick="reset()">↺ 重置</button>
+</div>
+
+<div class="arena">
+  <div class="actor biz" id="colBiz"><h3>🔵 订单系统</h3>
+    <div class="step" id="z1">等待执行…</div><div class="step" id="z2">等待执行…</div></div>
+  <div class="actor mq" id="colMq"><h3>🟣 MQ 延迟消息（主路径）</h3>
+    <div class="step" id="m1">—（本场景未出场）</div><div class="step" id="m2">—</div></div>
+  <div class="actor sweep" id="colSweep"><h3>🟡 扫表 Job（兜底路径）</h3>
+    <div class="step" id="w1">—（本场景未出场）</div><div class="step" id="w2">—</div></div>
+</div>
+
+<div class="verdict" id="verdict">四条剧本对应 mq-mall 超时关单的四种真实结局：<b>① 主路径正常工作 ② 主路径丢了由扫表兜住 ③ 两路重复了由 CAS 仲裁 ④ 支付先赢则两路全落空</b>——三层防线各司其职。</div>
+<div class="log" id="logEl"></div>
+
+<script>
+"use strict";
+let curToken = 0;
+const $ = id => document.getElementById(id);
+
+function addLog(t){
+  const d = document.createElement("div");
+  d.innerHTML = t; $("logEl").prepend(d);
+}
+function dim(mq, sweep){
+  $("colMq").classList.toggle("dim", mq);
+  $("colSweep").classList.toggle("dim", sweep);
+}
+function step(id, txt, cls){
+  const el = $(id);
+  el.innerHTML = txt;
+  el.className = "step" + (cls ? " " + cls : "");
+}
+function reset(){
+  curToken++;
+  $("logEl").innerHTML = "";
+  ["z1","z2","m1","m2","w1","w2"].forEach(id => { $(id).textContent = id.endsWith("1") ? "等待执行…" : "—"; $(id).className = "step"; });
+  ["s10","s20","s50"].forEach(id => $(id).classList.remove("cur","paid","closed"));
+  $("s10").classList.add("cur");
+  ["colMq","colSweep"].forEach(id => $(id).classList.remove("dim"));
+  $("verdict").innerHTML = "四条剧本对应 mq-mall 超时关单的四种真实结局：<b>① 主路径正常工作 ② 主路径丢了由扫表兜住 ③ 两路重复了由 CAS 仲裁 ④ 支付先赢则两路全落空</b>——三层防线各司其职。";
+  addLog("已重置：新订单 O1，status=10（库存已锁定）");
+}
+function setState(cls, extra){
+  ["s10","s20","s50"].forEach(id => $(id).classList.remove("cur"));
+  const el = $(cls);
+  el.classList.add("cur");
+  if (extra) el.classList.add(extra);
+}
+
+function run(sc){
+  curToken++;
+  const gen = curToken;
+  const at = (ms, fn) => setTimeout(() => { if (gen === curToken) fn(); }, ms);
+  $("logEl").innerHTML = "";
+  ["z1","z2","m1","m2","w1","w2"].forEach(id => { $(id).textContent = id.endsWith("1") ? "等待执行…" : "—"; $(id).className = "step"; });
+  ["s10","s20","s50"].forEach(id => $(id).classList.remove("cur","paid","closed"));
+  $("s10").classList.add("cur");
+  ["colMq","colSweep"].forEach(id => $(id).classList.remove("dim"));
+  R[sc](at);
+}
+
+const R = {
+
+  /* ① 正常路径：延迟消息独立完成关单 */
+  normal(at){
+    dim(false, true);
+    step("z1", "下单成功：status=10，锁库存，发 TTL=30min 延迟消息", "hit");
+    addLog("① 下单 O1 → 主路径启动：延迟消息进入沉睡");
+    at(1000, () => {
+      step("m1", "沉睡 30min（TTL 沉睡 → 死信转发 → 超时队列）", "run");
+      addLog("① 消息在延迟队列里躺着——数据库零扫描压力");
+    });
+    at(2200, () => {
+      step("m2", "到点消费：查 O1 → 仍是 10 → CAS UPDATE status 10→50", "hit");
+    });
+    at(3200, () => {
+      step("z2", "CAS 影响 1 行 ✅ → 释放库存 + 记 RELEASE 流水", "hit");
+      setState("s50", "closed");
+      $("verdict").innerHTML =
+        '<span class="ok">✅ 主路径独立闭环：下单时一条延迟消息，到点精准关单。</span>' +
+        '精度=消息 TTL（分钟级、无扫描压力）——这就是延迟消息作为<b class="warn">主路径</b>的价值：及时、精准、无 DB 负担。';
+      addLog("① 完成：status=50 已关闭，库存已释放——主路径全程无人值守");
+    });
+  },
+
+  /* ② 延迟消息丢了 → 扫表兜底 */
+  lost(at){
+    dim(false, false);
+    step("z1", "下单：status=10，锁库存，发延迟消息", "hit");
+    at(1000, () => {
+      step("m1", "Broker 宕机重启 → 这条延迟消息<b>丢了</b> ❌", "miss");
+      $("colMq").classList.add("dim");
+      addLog("② 意外：主路径断线——主路径不是 100% 可靠，这正是要兜底的原因");
+    });
+    at(2000, () => {
+      step("z2", "30 分钟过去：O1 还挂着 status=10，没人管…（库存被白白锁着）", "warn");
+    });
+    at(3000, () => {
+      step("w1", "扫表 Job（每 5 分钟）：捞 status=10 AND created_at &lt; now-30min → 命中 O1", "run");
+      addLog("② 兜底上线：低频扫表走索引，只捞一小批——简单可靠");
+    });
+    at(4000, () => {
+      step("w2", "复用同一 CAS 关单逻辑：10→50 ✅ → 释放库存", "hit");
+      setState("s50", "closed");
+      $("verdict").innerHTML =
+        '<span class="ok">✅ 双保险的价值：主路径丢了，兜底把单捡回来。</span>' +
+        '扫表精度=扫描间隔（最多晚 5 分钟）但<b class="warn">可靠性=数据就在 DB 里，几乎不会丢</b>。两层防御都不重：消息管及时，扫表管完整。';
+      addLog("② 完成：扫表兜底关单成功——晚了几分钟，但库存没被白锁一整天");
+    });
+  },
+
+  /* ③ 双路同时到 → CAS 仲裁 */
+  race(at){
+    dim(false, false);
+    step("z1", "下单：status=10，延迟消息已发（恰好扫表 Job 也在这一刻跑）", "hit");
+    addLog("③ 巧合：延迟消息到点 + 扫表扫到，同时命中 O1");
+    at(1100, () => {
+      step("m1", "延迟消息消费者：CAS UPDATE status 10→50", "run");
+      step("w1", "扫表兜底：CAS UPDATE status 10→50", "run");
+    });
+    at(2300, () => {
+      step("m2", "影响 1 行 ✅ 赢 → 释放库存", "hit");
+      step("w2", "影响 0 行 ❌ 输 → 返回 false，什么都不做", "miss");
+      setState("s50", "closed");
+      $("verdict").innerHTML =
+        '<span class="ok">✅ 执行端 CAS 幂等：两条路重复命中同一订单，行锁保证只有一个赢。</span>' +
+        '输方 <b class="warn">closeIfTimeout() 返回 false 就安静退出</b>——不重试、不补偿、不报错。双保险重复执行<b>无害</b>，这是设计出来的性质，不是运气。';
+      addLog("③ 完成：双路竞态由一条带条件的 UPDATE 仲裁——库存只释放一次");
+    });
+  },
+
+  /* ④ 用户先支付 → 两路全落空 */
+  paid(at){
+    dim(false, false);
+    step("z1", "第 29 分 59 秒：用户付款成功 → CAS status 10→20 ✅", "hit");
+    setState("s20", "paid");
+    addLog("④ 支付赢了 CAS——订单进入已支付");
+    at(1200, () => {
+      step("m1", "30 分钟到点：延迟消息照常送达 → 查状态 = 20（已支付）→ <b>什么都不做</b>", "miss");
+      addLog("④ 延迟消息天然幂等：到点查状态，不是 10 就走人");
+    });
+    at(2400, () => {
+      step("w1", "扫表 Job：WHERE status=10 → 已支付的单<b>根本不会被捞到</b>", "miss");
+      step("w2", "（反之若关单先赢 50：支付回调 CAS 不中 → 走自动退款分支）", "warn");
+      $("verdict").innerHTML =
+        '<span class="ok">✅ 竞态的正确结局：付了钱的订单绝不会被关——防资损的核心防线。</span>' +
+        '三层各司其职：<b class="warn">延迟消息=及时性（主）· 扫表=完整性（兜）· CAS=正确性（裁）</b>。想看支付 vs 关单的单点对决，开 <a href="payment-state-machine.html" style="color:#7dd3fc">payment-state-machine.html</a>（同目录）。';
+      addLog("④ 完成：延迟消息空跑、扫表不命中——订单稳稳保持已支付");
+    });
+  }
+};
+
+addLog("初始化完成。四条剧本 = mq-mall 超时关单的四种真实结局，全部靠同一条 CAS UPDATE 收口");
+</script>
+</body>
+</html>

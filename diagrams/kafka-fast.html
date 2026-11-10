@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Kafka 为什么快 · 五支柱动画 · Kafka 专篇 05</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 26px; }
+  h1 { color: #7dd3fc; font-size: 21px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 14px; }
+  .modes { margin-bottom: 12px; }
+  .modes span { color: #94a3b8; font-size: 13px; margin-right: 8px; }
+  .modes button { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 8px;
+                  padding: 7px 16px; font-size: 13px; cursor: pointer; margin-right: 6px; }
+  .modes button.on { background: #1e40af; color: #dbeafe; border-color: #3b82f6; }
+  .pillars button { background: #134e4a; color: #99f6e4; border: 1px solid #14b8a6; border-radius: 8px;
+                    padding: 8px 14px; font-size: 13px; cursor: pointer; margin: 0 8px 10px 0; }
+  .pillars button.on { background: #0f766e; color: #ccfbf1; transform: scale(1.04); }
+  .pillars button.all { background: #1e40af; color: #dbeafe; border-color: #3b82f6; }
+  .stage { background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 18px; min-height: 240px; margin-bottom: 14px; }
+  .stage h3 { color: #7dd3fc; font-size: 15px; margin-bottom: 4px; }
+  .stage .hint { color: #64748b; font-size: 12.5px; margin-bottom: 14px; }
+  .duel { display: flex; gap: 16px; flex-wrap: wrap; }
+  .lane { flex: 1; min-width: 300px; background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 12px; }
+  .lane h4 { font-size: 13px; margin-bottom: 10px; }
+  .lane.bad h4 { color: #f87171; } .lane.good h4 { color: #34d399; }
+  .row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; min-height: 30px; }
+  .chip { border-radius: 6px; padding: 4px 8px; font-size: 11.5px; border: 1px solid #475569; color: #cbd5e1;
+          transition: all .45s; white-space: nowrap; }
+  .chip.m1 { background: #312e81; border-color: #818cf8; }
+  .chip.m2 { background: #3b0764; border-color: #c084fc; }
+  .chip.m3 { background: #7c2d12; border-color: #fb923c; }
+  .chip.m4 { background: #164e63; border-color: #22d3ee; }
+  .chip.hot { background: #78350f; border-color: #fbbf24; }
+  .slot { width: 40px; height: 26px; border: 1px dashed #334155; border-radius: 6px; display: inline-flex;
+          align-items: center; justify-content: center; font-size: 11px; color: #475569; }
+  .slot.filled { border-style: solid; }
+  .strip { display: flex; gap: 4px; flex-wrap: wrap; min-height: 32px; align-items: center; }
+  .strip .chip { animation: pop .3s; }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .net { height: 34px; border-radius: 8px; background: #0b1120; border: 1px solid #1e293b; margin: 8px 0;
+         position: relative; overflow: hidden; }
+  .pkt { position: absolute; top: 6px; width: 22px; height: 20px; border-radius: 5px; font-size: 10px;
+         display: flex; align-items: center; justify-content: center; transition: left .5s linear; }
+  .pkt.bad { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+  .pkt.good { background: #14532d; color: #86efac; border: 1px solid #34d399; }
+  .node { border: 1px solid #475569; border-radius: 8px; padding: 6px 10px; font-size: 12px; color: #cbd5e1;
+          display: inline-block; transition: all .4s; }
+  .node.lit { border-color: #38bdf8; color: #bae6fd; background: #1c3d5a; }
+  .node.cpu { border-color: #ef4444; color: #fca5a5; }
+  .node.dma { border-color: #34d399; color: #86efac; }
+  .arrow { color: #475569; font-size: 12px; margin: 0 2px; }
+  .meter { height: 14px; background: #0b1120; border-radius: 7px; overflow: hidden; margin: 6px 0; }
+  .meter i { display: block; height: 100%; width: 0; border-radius: 7px; transition: width 1.2s ease; }
+  .stat { font-size: 12px; color: #94a3b8; margin-top: 6px; }
+  .stat b.hit { color: #34d399; } .stat b.miss { color: #f87171; } .stat b.acc { color: #fbbf24; }
+  .verdict { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 12px;
+             font-size: 13px; min-height: 74px; margin-bottom: 12px; color: #94a3b8; }
+  .verdict .ok { color: #34d399; } .verdict .no { color: #f87171; } .verdict .warn { color: #fcd34d; }
+  .btns button { background: #1e40af; color: #dbeafe; border: none; border-radius: 8px; padding: 9px 16px;
+                 font-size: 13px; cursor: pointer; margin: 0 10px 10px 0; }
+  .btns button:hover { background: #3b82f6; }
+  .btns button.reset { background: #7f1d1d; color: #fecaca; }
+  .log { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 10px;
+         font-size: 12.5px; color: #94a3b8; min-height: 56px; }
+  .log div { padding: 2px 0; }
+</style>
+</head>
+<body>
+<h1>Kafka 为什么快：五支柱动画</h1>
+<div class="sub">Kafka 专篇 05 · 顺序写 / 页缓存 / 零拷贝 / 批量压缩 / 分区并行——总纲：随机读写→顺序读写，多次搬运→最少搬运</div>
+
+<div class="modes">
+  <span>视角：</span>
+  <button id="m-life" class="on" onclick="setMode(true)">🐣 生活比喻版（快递分拣中心）</button>
+  <button id="m-tech" onclick="setMode(false)">🔧 技术版（磁盘与内核）</button>
+</div>
+
+<div class="pillars">
+  <button id="b-seq"      onclick="pick('seq')">① 顺序写</button>
+  <button id="b-cache"    onclick="pick('cache')">② 页缓存</button>
+  <button id="b-zerocopy" onclick="pick('zerocopy')">③ 零拷贝</button>
+  <button id="b-batch"    onclick="pick('batch')">④ 批量+压缩</button>
+  <button id="b-part"     onclick="pick('part')">⑤ 分区并行</button>
+  <button class="all" onclick="runAll()">▶ 连续演示全部</button>
+</div>
+
+<div class="stage" id="stage">
+  <h3>点上方任意支柱开始</h3>
+  <div class="hint">每个支柱一个「❌ 慢做法 vs ✅ Kafka 做法」的对照实验，跑完看结论</div>
+  <div style="color:#475569; font-size:13px; padding:40px; text-align:center;">Stage 区</div>
+</div>
+
+<div class="verdict" id="verdict">五个支柱都点一遍，再点「连续演示全部」——同一句总纲在不同层的五次出现。</div>
+
+<div class="btns">
+  <button class="reset" onclick="resetAll()">↺ 重置</button>
+</div>
+<div class="log" id="logEl"></div>
+
+<script>
+"use strict";
+let life = true;          // 比喻版 / 技术版
+let timers = [];          // 全部 setTimeout 句柄，重置时清空
+let runToken = 0;         // 连播令牌：重置/切场景时失效
+const $ = id => document.getElementById(id);
+
+function later(fn, ms){ const t = setTimeout(fn, ms); timers.push(t); }
+function clearTimers(){ timers.forEach(clearTimeout); timers = []; runToken++; }
+function addLog(t){
+  const d = document.createElement("div");
+  d.innerHTML = t; $("logEl").prepend(d);
+}
+function resetAll(){
+  clearTimers();
+  ["b-seq","b-cache","b-zerocopy","b-batch","b-part"].forEach(id => $(id).classList.remove("on"));
+  $("stage").innerHTML = '<h3>点上方任意支柱开始</h3><div class="hint">每个支柱一个「❌ 慢做法 vs ✅ Kafka 做法」的对照实验，跑完看结论</div><div style="color:#475569; font-size:13px; padding:40px; text-align:center;">Stage 区</div>';
+  $("verdict").innerHTML = "五个支柱都点一遍，再点「连续演示全部」——同一句总纲在不同层的五次出现。";
+  $("logEl").innerHTML = "";
+  addLog("已重置");
+}
+
+function setMode(v){
+  life = v;
+  $("m-life").classList.toggle("on", v);
+  $("m-tech").classList.toggle("on", !v);
+  const cur = ["b-seq","b-cache","b-zerocopy","b-batch","b-part"].find(id => $(id).classList.contains("on"));
+  if (cur) pick(cur.slice(2));
+  else addLog(v ? "🐣 比喻版：快递分拣中心的五个提速妙招" : "🔧 技术版：磁盘/内核/网卡的五个工程手段");
+}
+
+function pick(key, silent){
+  clearTimers();
+  ["b-seq","b-cache","b-zerocopy","b-batch","b-part"].forEach(id => $(id).classList.remove("on"));
+  $("b-" + key).classList.add("on");
+  if (!silent) $("logEl").innerHTML = "";
+  SCENES[key]();
+}
+
+function runAll(){
+  clearTimers(); $("logEl").innerHTML = "";
+  const order = ["seq","cache","zerocopy","batch","part"];
+  let i = 0;
+  const next = () => {
+    if (i >= order.length){ addLog("🎉 五支柱连播完毕——五句话合成一句：<b>把随机读写变成顺序读写，把多次搬运压缩成最少搬运</b>"); return; }
+    pick(order[i++], true);
+    const token = runToken;                    // pick 内部 clearTimers 会推进 token，取最新值
+    setTimeout(() => { if (token === runToken) next(); }, 4600);
+  };
+  next();
+}
+
+/* ============ 场景实现 ============ */
+const SCENES = {
+
+  /* ① 顺序写：随机插入 vs 尾部追加 */
+  seq(){
+    const T = life
+      ? { bad:"❌ 每本书按编号插回原书架（满场跑）", good:"✅ 全部放还书车末尾（只跟队尾）",
+          chips:["书A","书B","书C","书D","书E","书F","书G","书H"],
+          badStat:"插回 8 本 · 来回跑 8 趟 · 速度 <b class='miss'>100KB/s</b>",
+          goodStat:"放车尾 8 本 · 从不走回头路 · 速度 <b class='hit'>600MB/s</b>",
+          verdict:'<span class="ok">✅ 顺序写的速度≈内存随机写——这就是 Kafka 把「消息存储」做成<b>只追加日志</b>的原因：它根本不需要"改中间"。</span> 磁盘顺序写比随机写快 <b class="warn">3~4 个数量级</b>（HDD 免寻道 / SSD 免跨块）。' }
+      : { bad:"❌ B+ 树式：按 key 定位插到中间页（随机 I/O）", good:"✅ Partition 日志：永远 append 到 Segment 末尾",
+          chips:["msg1","msg2","msg3","msg4","msg5","msg6","msg7","msg8"],
+          badStat:"写入 8 条 · 随机落盘 8 次 · <b class='miss'>~100KB/s</b>",
+          goodStat:"追加 8 条 · 顺序落盘 8 次 · <b class='hit'>~600MB/s</b>",
+          verdict:'<span class="ok">✅ 每个分区 = 一串 1GB 的 Segment 文件连续追加；代价是不能随机改——而消息队列只追加只读取，完美匹配。</span> 思想同源：<b class="warn">RabbitMQ 的消息日志也是追加写 + 定期 compact（stage2/02）</b>，Kafka 把它做到极致。' };
+
+    $("stage").innerHTML =
+      '<h3>支柱① 顺序写</h3><div class="hint">磁盘顺序写 ≈ 600MB/s，随机写 ≈ 100KB/s——中间隔着一辆磁头车的距离</div>' +
+      '<div class="duel">' +
+      '<div class="lane bad"><h4>' + T.bad + '</h4><div id="randGrid" style="display:grid;grid-template-columns:repeat(8,44px);gap:5px;margin-bottom:8px;">' +
+      Array.from({length:16}, (_,i)=>'<span class="slot" id="sg'+i+'">'+i+'</span>').join("") +
+      '</div><div class="stat" id="badStat"></div></div>' +
+      '<div class="lane good"><h4>' + T.good + '</h4><div class="strip" id="seqStrip"></div>' +
+      '<div class="stat" id="goodStat"></div></div></div>';
+
+    const gridPos = [3, 11, 6, 14, 1, 9, 4, 12];   // 预排的"随机"落点
+    T.chips.forEach((c, i) => {
+      later(() => {
+        const s = $("sg" + gridPos[i]);
+        s.innerHTML = c; s.classList.add("filled");
+        s.style.borderColor = "#ef4444"; s.style.color = "#fca5a5";
+      }, 260 * i);
+    });
+    T.chips.forEach((c, i) => {
+      later(() => {
+        const d = document.createElement("span");
+        d.className = "chip m" + ((i % 4) + 1); d.textContent = c;
+        $("seqStrip").appendChild(d);
+      }, 120 * i);
+    });
+    later(() => {
+      $("badStat").innerHTML = T.badStat;
+      $("goodStat").innerHTML = T.goodStat;
+      $("verdict").innerHTML = T.verdict;
+      addLog("① 顺序写：同一批 8 条消息，右边永不回头——放大到百万条就是 3~4 个数量级");
+    }, 260 * 8 + 200);
+  },
+
+  /* ② 页缓存：热数据在内核页里 */
+  cache(){
+    const T = life
+      ? { src:"📦 到货", cache:"🛒 柜台热销堆", disk:"🏬 仓库", read:"🛍️ 顾客取书",
+          verdict:'<span class="ok">✅ 刚到的书几乎马上被买走——全在柜台命中，只有偶尔冷门书才跑仓库。</span> 且柜台是<b class="warn">物业（OS）统一管理</b>，不是书店自己雇人管：进程重启柜台货还在，书店（JVM 堆）完全不用为它操心 GC。' }
+      : { src:"Producer", cache:"OS PageCache", disk:"磁盘", read:"Consumer",
+          verdict:'<span class="ok">✅ 刚写的消息几乎必被马上消费 → PageCache 全命中，热数据≈内存速度。</span> 两个好处：数据<b class="warn">不进 JVM 堆 → 零 GC 压力</b>；进程重启 PageCache 还在（OS 管理）→ 免预热。混布机器要小心：别的服务会把你的页缓存挤掉。' };
+
+    $("stage").innerHTML =
+      '<h3>支柱② 页缓存（PageCache）</h3><div class="hint">读写都走 OS 的内存页，磁盘只在"冷数据"时才碰</div>' +
+      '<div class="duel"><div class="lane good" style="flex:1.6"><h4>生产/消费都过同一层内存</h4>' +
+      '<div class="row"><span class="node" id="c-src">' + T.src + '</span><span class="arrow">→</span>' +
+      '<span class="node" id="c-cache" style="padding:10px 18px;border-width:2px;">' + T.cache + '</span><span class="arrow">⇢异步刷盘⇢</span>' +
+      '<span class="node" id="c-disk">' + T.disk + '</span></div>' +
+      '<div class="row"><span class="node" id="c-read">' + T.read + '</span><span class="arrow">←</span>' +
+      '<span class="node" id="c-cache2" style="padding:10px 18px;border-width:2px;">' + T.cache + '</span><span class="arrow">←未命中才走</span>' +
+      '<span class="node" id="c-disk2">' + T.disk + '</span></div>' +
+      '<div class="stat" id="cacheStat"></div></div></div>';
+
+    let hits = 0, misses = 0;
+    later(() => { $("c-src").classList.add("lit"); $("c-cache").classList.add("lit"); }, 300);
+    later(() => addLog("写入 5 条 → 全部先落 <b>PageCache</b>（黄色热点），OS 异步刷盘"), 700);
+    [0,1,2,3,4].forEach(i => {
+      later(() => {
+        const read = $("c-read");
+        const hit = i < 4;                        // 4 热命中 + 1 冷未命中
+        if (hit) hits++; else misses++;
+        read.classList.remove("lit"); void read.offsetWidth; read.classList.add("lit");
+        addLog("第 " + (i+1) + " 次读：" + (hit
+          ? '✅ PageCache <b>命中</b>——不碰磁盘，内存速度'
+          : '⚠ 未命中 → 走磁盘（冷数据），顺便被内核加载回 PageCache'));
+        $("cacheStat").innerHTML = "已读 5 次：命中 <b class='hit'>" + hits + "</b> · 未命中 <b class='miss'>" + misses + "</b> · 命中率 " + Math.round(hits / (hits + misses) * 100) + "%";
+      }, 1200 + 600 * i);
+    });
+    later(() => { $("verdict").innerHTML = T.verdict; }, 1200 + 600 * 5 + 200);
+  },
+
+  /* ③ 零拷贝：传统 4 拷贝 4 切换 vs sendfile 2 拷贝 */
+  zerocopy(){
+    const T = life
+      ? { verdict:'<span class="ok">✅ 比喻：快递从仓库直达分拣传送带——而不是先拆包到前台、登记、再装车。</span> CPU 不再当搬运工（只剩 DMA），一趟货<b class="warn">少跑一半路</b>。' }
+      : { verdict:'<span class="ok">✅ 消费路径数据不过用户态（JVM 只传文件描述符），拷贝 4→2、上下文切换 4→2。</span> Java 对应 <b>FileChannel.transferTo()</b>（Netty FileRegion 同款）。<span class="warn">失效场景追问必到：SSL 加密/消息格式转换都必须回用户态——零拷贝失效。</span>' };
+    const hops = life
+      ? [["📦 仓库","DMA"],["🧾 拆包台（前台）","CPU 搬运"],["📋 重新装车","CPU 搬运"],["🚚 传送带","DMA"]]
+      : [["磁盘","DMA"],["内核缓冲区","DMA"],["用户态 buffer","CPU 搬运"],["socket 缓冲区","CPU"],["网卡","DMA"]];
+    const goodHops = life
+      ? [["📦 仓库","DMA"],["🚚 传送带（直达）","DMA"]]
+      : [["磁盘","DMA"],["内核缓冲区","DMA"],["网卡","DMA(直传)"]];
+
+    $("stage").innerHTML =
+      '<h3>支柱③ 零拷贝（消费一条消息搬几次？）</h3><div class="hint">红色节点 = CPU 参与搬运 + 用户态/内核态切换；绿色 = 纯 DMA 直传</div>' +
+      '<div class="duel"><div class="lane bad" style="flex:1.5"><h4>❌ 传统 read + write（4 次拷贝 + 4 次切换）</h4>' +
+      '<div class="row" id="zBad"></div><div class="stat" id="zBadStat"></div></div>' +
+      '<div class="lane good" style="flex:1.2"><h4>✅ sendfile（2 次拷贝，数据不出内核）</h4>' +
+      '<div class="row" id="zGood"></div><div class="stat" id="zGoodStat"></div></div></div>';
+
+    $("zBad").innerHTML = hops.map((h,i) =>
+      '<span class="node ' + (h[1].startsWith("CPU") ? "cpu" : "dma") + '">' + h[0] + '</span>' + (i < hops.length-1 ? '<span class="arrow">→</span>' : '')).join("");
+    $("zGood").innerHTML = goodHops.map((h,i) =>
+      '<span class="node dma">' + h[0] + '</span>' + (i < goodHops.length-1 ? '<span class="arrow">→</span>' : '')).join("");
+
+    // 逐跳点亮"慢路径"，最后出统计
+    hops.forEach((_, i) => later(() => addLog("❌ 慢路径：第 " + (i+1) + " 次搬运" + (hops[i][1].startsWith("CPU") ? "——<b>CPU 亲自搬运 + 状态切换</b>（数据明明只是路过 JVM！）" : "（DMA）")), 400 * (i + 1)));
+    later(() => {
+      $("zBadStat").innerHTML = "拷贝 <b class='miss'>4 次</b> · 切换 <b class='miss'>4 次</b> · CPU 沦为搬运工";
+      $("zGoodStat").innerHTML = "拷贝 <b class='hit'>2 次</b> · 切换 <b class='hit'>2 次</b> · CPU 解放";
+      $("verdict").innerHTML = T.verdict;
+    }, 400 * hops.length + 300);
+  },
+
+  /* ④ 批量+压缩：一件一车 vs 攒整车 */
+  batch(){
+    const N = 12;   // 演示 12 条（真实场景 100 条），避免动画过长
+    const T = life
+      ? { verdict:'<span class="ok">✅ 一车装 12 件 vs 12 件叫 12 趟车——过路费摊薄 12 倍，整批压缩比还比单条高。</span> 代价：多等 10ms 攒批 = <b class="warn">吞吐换延迟</b>（linger.ms，交易链路设 0，日志流敢设 100）。' }
+      : { verdict:'<span class="ok">✅ batch.size=16KB + linger.ms=10 + compression=lz4：往返开销摊薄、整批压缩比更高（端到端，Broker 原样存）。</span> 代价：linger.ms 最多 <b class="warn">10ms 延迟</b>——吞吐换延迟的经典交易。' };
+
+    $("stage").innerHTML =
+      '<h3>支柱④ 批量 + 压缩（' + N + ' 条消息怎么发？）</h3><div class="hint">下面的"网络管道"每闪一次 = 一次网络往返的开销（元数据+握手+确认）</div>' +
+      '<div class="duel"><div class="lane bad" style="flex:1"><h4>❌ 单条单发</h4><div class="net" id="bNet"></div>' +
+      '<div class="stat" id="bBadStat"></div></div>' +
+      '<div class="lane good" style="flex:1"><h4>✅ 攒一批 16KB + lz4 压缩</h4><div class="strip" id="bStrip" style="min-height:20px"></div>' +
+      '<div class="net" id="bNet2"></div><div class="stat" id="bGoodStat"></div></div></div>';
+
+    for (let i = 0; i < N; i++){
+      later(() => {
+        const p = document.createElement("div");
+        p.className = "pkt bad"; p.textContent = "msg"; p.style.left = "4px";
+        $("bNet").appendChild(p);
+        later(() => { p.style.left = "calc(100% - 30px)"; }, 30);
+        later(() => p.remove(), 560);
+      }, 300 * i);
+    }
+    // 右侧先攒批（8 个一组的 chip 陆续进框），再一发
+    for (let i = 0; i < N; i++){
+      later(() => {
+        const d = document.createElement("span");
+        d.className = "chip m" + ((i % 4) + 1); d.style.fontSize = "10px"; d.style.padding = "2px 5px";
+        d.textContent = "m" + (i+1);
+        $("bStrip").appendChild(d);
+      }, 200 * i);
+    }
+    later(() => {
+      const p = document.createElement("div");
+      p.className = "pkt good"; p.textContent = "batch+lz4"; p.style.width = "74px"; p.style.left = "4px";
+      $("bNet2").appendChild(p);
+      later(() => { p.style.left = "calc(100% - 84px)"; }, 30);
+      addLog("右侧：12 条攒成 <b>1 批</b>，整批 lz4 压缩后一次发出");
+    }, 200 * N + 250);
+    later(() => {
+      $("bBadStat").innerHTML = "<b class='miss'>" + N + " 次网络往返</b> · 每条都付全额过路费";
+      $("bGoodStat").innerHTML = "<b class='hit'>1 次网络往返</b> · 过路费摊薄 " + N + " 倍";
+      $("verdict").innerHTML = T.verdict;
+    }, 200 * N + 900);
+  },
+
+  /* ⑤ 分区并行：1 条流水线 vs 6 条 */
+  part(){
+    const T = life
+      ? { one:"1 条分拣线（一件一件过）", many:"6 条分拣线并行",
+          verdict:'<span class="ok">✅ 加分拣线（分区）吞吐线性涨——但<b class="warn">并发消费者数 ≤ 分区数</b>，分区是并行的最小单位（多建没人领）。</span> 这就是 Kafka "水平扩展"的物理形状。' }
+      : { one:"1 Partition → 1 块磁盘顺序写", many:"6 Partitions → 6 块磁盘并行",
+          verdict:'<span class="ok">✅ 吞吐随分区数近线性扩展（顺序写×N 块盘）。</span> 注意代价：<b class="warn">消费者数上限=分区数</b>；分区过多反而拉长 Rebalance 与副本同步（03 篇）。' };
+
+    const bars = n => Array.from({length:n}, (_,i) =>
+      '<div class="meter"><i id="pb' + i + '" style="background:linear-gradient(90deg,#0d9488,#34d399)"></i></div>').join("");
+
+    $("stage").innerHTML =
+      '<h3>支柱⑤ 分区并行（并行 = 加磁盘，不是加线程）</h3><div class="hint">吞吐条会跑 1.2 秒——看两边最终刻度</div>' +
+      '<div class="duel"><div class="lane bad"><h4>❌ ' + T.one + '</h4>' + bars(1) + '<div class="stat" id="p1stat"></div></div>' +
+      '<div class="lane good"><h4>✅ ' + T.many + '</h4>' + bars(6) + '<div class="stat" id="p6stat"></div></div></div>';
+
+    later(() => { $("pb0").style.width = "17%"; }, 300);
+    Array.from({length:6}, (_,i) => later(() => { $("pb" + i).style.width = "17%"; }, 300));
+    later(() => { $("p1stat").innerHTML = "约 <b class='miss'>10w 条/s</b>（单盘顺序写已封顶）"; }, 1600);
+    later(() => {
+      Array.from({length:6}, (_,i) => { $("pb" + i).style.width = "17%"; });
+      $("p6stat").innerHTML = "约 <b class='hit'>60w 条/s</b>（6 盘并行，近线性）";
+      $("verdict").innerHTML = T.verdict;
+      addLog('⑤ 分区并行：Kafka 的「水平扩展」= 多分区多磁盘并行顺序写——不是单线程堆核');
+    }, 1700);
+  }
+};
+
+addLog("初始化完成。建议顺序：五个支柱逐个点 → 最后「连续演示全部」→ 把五句话合成一句总纲");
+</script>
+</body>
+</html>

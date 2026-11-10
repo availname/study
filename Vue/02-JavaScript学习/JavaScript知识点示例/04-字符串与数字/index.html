@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>字符串与数字</title>
+</head>
+<body>
+  <h1>字符串与数字</h1>
+  <button id="show-button" type="button">显示结果</button>
+  <p id="output"></p>
+
+  <script>
+    const studentName = '小明'
+    const score = 86
+
+    document.querySelector('#show-button').addEventListener('click', () => {
+      document.querySelector('#output').textContent = studentName + ' 的成绩是 ' + score + ' 分'
+    })
+  </script>
+</body>
+</html>

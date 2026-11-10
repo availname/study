@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>textContent、innerHTML、innerText</title>
+</head>
+<body>
+  <h1>textContent、innerHTML、innerText</h1>
+  <div id="target">原始内容</div>
+  <button id="text-button" type="button">使用 textContent</button>
+  <button id="html-button" type="button">使用 innerHTML</button>
+  <button id="read-button" type="button">读取 innerText</button>
+  <p id="output"></p>
+
+  <script>
+    const target = document.querySelector('#target')
+
+    document.querySelector('#text-button').addEventListener('click', () => {
+      target.textContent = '<strong>这会作为普通文字显示</strong>'
+    })
+
+    document.querySelector('#html-button').addEventListener('click', () => {
+      target.innerHTML = '<strong>这会作为 HTML 标签显示</strong>'
+    })
+
+    document.querySelector('#read-button').addEventListener('click', () => {
+      document.querySelector('#output').textContent = '看到的文字：' + target.innerText
+    })
+  </script>
+</body>
+</html>

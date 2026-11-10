@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>错误与 console 调试</title>
+</head>
+<body>
+  <h1>错误与 console 调试</h1>
+  <button id="debug-button" type="button">输出调试信息</button>
+  <p id="output"></p>
+
+  <script>
+    document.querySelector('#debug-button').addEventListener('click', () => {
+      const score = 86
+      console.log('当前成绩：', score)
+      console.error('这是 console.error 的演示，不是页面故障。')
+      document.querySelector('#output').textContent = '请按 F12 查看控制台。'
+    })
+  </script>
+</body>
+</html>

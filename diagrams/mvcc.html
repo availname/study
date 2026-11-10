@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>MVCC 版本链与 ReadView · MySQL 深入 02</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 26px; }
+  h1 { color: #7dd3fc; font-size: 21px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 16px; }
+  .modes { margin-bottom: 14px; }
+  .modes span { color: #94a3b8; font-size: 13px; margin-right: 8px; }
+  .modes button { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 8px;
+                  padding: 7px 16px; font-size: 13px; cursor: pointer; margin-right: 6px; }
+  .modes button.on { background: #1e40af; color: #dbeafe; border-color: #3b82f6; }
+  .panel { display: flex; gap: 24px; margin-bottom: 16px; }
+  .chainbox { flex: 1.3; background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 16px; min-height: 230px; }
+  .chainbox h3 { color: #7dd3fc; font-size: 14px; margin-bottom: 12px; }
+  .vnode { display: inline-block; background: #1c3d5a; border: 2px solid #38bdf8; border-radius: 10px;
+           padding: 10px 14px; margin-right: 6px; text-align: center; font-size: 12.5px; color: #bae6fd;
+           transition: all .4s; vertical-align: middle; }
+  .vnode .big { font-size: 20px; font-weight: bold; color: #e0f2fe; display: block; }
+  .vnode .trx { color: #7dd3fc; font-size: 11px; }
+  .vnode.checking { border-color: #fbbf24; background: #78350f; transform: scale(1.08); }
+  .vnode.invisible { border-color: #f87171; background: #450a0a; opacity: .55; }
+  .vnode.visible { border-color: #34d399; background: #14532d; }
+  .arrow { display: inline-block; color: #475569; font-size: 20px; margin-right: 4px; vertical-align: middle; }
+  .arrowlbl { color: #64748b; font-size: 11px; vertical-align: middle; margin-right: 8px; }
+  .rvbox { flex: 1; background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 16px; min-height: 230px; }
+  .rvbox h3 { color: #c4b5fd; font-size: 14px; margin-bottom: 12px; }
+  .rvrow { display: flex; justify-content: space-between; padding: 7px 10px; border-radius: 8px; margin-bottom: 6px;
+           background: #0f172a; font-size: 13px; }
+  .rvrow span:first-child { color: #94a3b8; }
+  .rvrow span:last-child { color: #c4b5fd; font-weight: bold; }
+  .verdict { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 12px;
+             font-size: 13px; min-height: 96px; margin-bottom: 14px; color: #94a3b8; }
+  .verdict .rule { display: block; padding: 3px 0; }
+  .verdict .ok { color: #34d399; } .verdict .no { color: #f87171; }
+  .result { font-size: 16px; padding: 10px 16px; border-radius: 10px; display: inline-block; }
+  .result.r1000 { background: #14532d; color: #86efac; }
+  .result.r500 { background: #78350f; color: #fcd34d; }
+  .btns { margin-bottom: 14px; }
+  .btns button { background: #1e40af; color: #dbeafe; border: none; border-radius: 8px; padding: 9px 16px;
+                 font-size: 13px; cursor: pointer; margin-right: 10px; }
+  .btns button:hover { background: #3b82f6; }
+  .btns button.reset { background: #7f1d1d; color: #fecaca; }
+  .log { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 10px;
+         font-size: 12.5px; color: #94a3b8; min-height: 60px; }
+  .log div { padding: 2px 0; }
+</style>
+</head>
+<body>
+<h1>MVCC 版本链与 ReadView 判定动画</h1>
+<div class="sub">MySQL 深入 02 · 选隔离级别（RR/RC）→ 按剧本点按钮 → 看版本链判定过程与"读到多少钱"</div>
+
+<div class="modes">
+  <span>事务A 的隔离级别：</span>
+  <button id="m-rr" class="on" onclick="setMode('RR')">RR 可重复读（默认）</button>
+  <button id="m-rc" onclick="setMode('RC')">RC 读已提交</button>
+</div>
+
+<div class="panel">
+  <div class="chainbox">
+    <h3>余额字段的 undo 版本链（从新到旧）</h3>
+    <div id="chain">
+      <span class="vnode" id="v300"><span class="big">¥500</span><span class="trx">trx_id=300</span></span>
+      <span class="arrow">←</span><span class="arrowlbl">roll_pointer</span>
+      <span class="vnode" id="v100"><span class="big">¥1000</span><span class="trx">trx_id=100</span></span>
+    </div>
+    <div style="margin-top:14px;color:#64748b;font-size:12px">
+      时间线：事务100 先改余额=1000（已提交）→ 事务300 又改成 500（当前状态）
+    </div>
+  </div>
+  <div class="rvbox">
+    <h3 id="rvTitle">ReadView 快照（事务A）</h3>
+    <div class="rvrow"><span>m_ids 活跃事务</span><span id="rvm">[]</span></div>
+    <div class="rvrow"><span>min_trx_id</span><span id="rvmin">—</span></div>
+    <div class="rvrow"><span>max_trx_id（下一个将分配）</span><span id="rvmax">—</span></div>
+    <div class="rvrow"><span>creator_id（事务A自己）</span><span>200</span></div>
+    <div style="margin-top:10px;font-size:12px;color:#64748b" id="rvNote">点下方"事务A读取余额"生成快照</div>
+  </div>
+</div>
+
+<div class="verdict" id="verdict">判定过程将在这里逐步展示：对版本链<b>从新到旧</b>逐个套用可见性规则。</div>
+
+<div class="btns">
+  <button onclick="act('modify')">① 事务300：UPDATE 余额=500（不提交）</button>
+  <button onclick="act('commit')">② 事务300：COMMIT（提交！）</button>
+  <button onclick="act('read')">③ 事务A：SELECT 余额（看判定过程）</button>
+  <button class="reset" onclick="reset()">↺ 重置</button>
+</div>
+<div class="result" id="result">读到的余额：—</div>
+<div class="log" id="logEl" style="margin-top:14px"></div>
+
+<script>
+"use strict";
+let mode = "RR";
+let committed300 = false;      // 事务300 是否已提交
+let rrView = null;             // RR 复用的快照
+let readCount = 0;
+
+const CHAIN = [
+  { trx: 300, money: 500,  hidden: true  },   // 未提交的修改（初始）
+  { trx: 100, money: 1000, hidden: false }
+];
+
+function $(id){ return document.getElementById(id); }
+function setMode(m){
+  mode = m;
+  $("m-rr").classList.toggle("on", m === "RR");
+  $("m-rc").classList.toggle("on", m === "RC");
+  reset();
+  addLog(`已切换为 ${m === "RR" ? "RR 可重复读（ReadView 只在第一次读时生成，之后复用）" : "RC 读已提交（每次读都生成新 ReadView）"}`);
+}
+function reset(){
+  committed300 = false; rrView = null; readCount = 0;
+  $("rvTitle").textContent = "ReadView 快照（事务A）";
+  ["rvm","rvmin","rvmax"].forEach(id => $(id).textContent = "—");
+  $("rvNote").textContent = "点下方\"事务A读取余额\"生成快照";
+  $("verdict").innerHTML = "判定过程将在这里逐步展示：对版本链<b>从新到旧</b>逐个套用可见性规则。";
+  $("result").textContent = "读到的余额：—";
+  $("result").className = "result";
+  $("logEl").innerHTML = "";
+  renderChain(null);
+  addLog("已重置");
+}
+function renderChain(checkIdx, cls){
+  const nodes = document.querySelectorAll(".vnode");
+  nodes.forEach(n => n.classList.remove("checking","invisible","visible"));
+  if (checkIdx != null && cls) nodes[checkIdx].classList.add(cls);
+}
+function addLog(t){
+  const d = document.createElement("div");
+  d.innerHTML = t;
+  $("logEl").prepend(d);
+}
+
+function act(action){
+  if (action === "modify"){
+    committed300 = false;
+    addLog("事务300 执行 UPDATE 余额=500，<b>未提交</b>——新版本(trx=300)压入版本链。此刻其它事务读到的仍是 1000");
+  }
+  else if (action === "commit"){
+    committed300 = true;
+    addLog("事务300 <b>COMMIT</b>——trx=300 现在是\"已提交事务\"。此后：RR 事务看不到它（旧快照），RC 事务能看到（新快照）");
+  }
+  else if (action === "read"){
+    readCount++;
+    doRead();
+  }
+}
+
+function doRead(){
+  const isNewView = (mode === "RC") || (rrView === null && readCount === 1);
+  // 生成或复用 ReadView
+  let rv;
+  if (mode === "RR" && rrView && readCount > 1) {
+    rv = rrView;
+    $("rvNote").textContent = "RR：复用第一次读的 ReadView（这就是\"可重复读\"的实现）";
+  } else {
+    rv = committed300
+      ? { m: [], min: 400, max: 400 }
+      : { m: [300], min: 300, max: 400 };
+    rrView = rv;
+    $("rvNote").textContent = (readCount === 1 ? "第一次读：" : "RC：每次读都") + "生成新 ReadView";
+  }
+  $("rvm").textContent = JSON.stringify(rv.m);
+  $("rvmin").textContent = rv.min;
+  $("rvmax").textContent = rv.max;
+  $("rvTitle").textContent = `ReadView 快照（事务A 第 ${readCount} 次读取 · ${mode} 模式${rv === rrView && readCount > 1 ? " · 复用" : " · 新生成"}）`;
+
+  // 可见性判定：版本链从新到旧
+  $("verdict").innerHTML = "";
+  const steps = [];
+  CHAIN.forEach((v, i) => {
+    const x = v.trx;
+    let visible, reason;
+    if (x === 200)                { visible = true;  reason = "规则①：自己改的 → 可见"; }
+    else if (x < rv.min)          { visible = true;  reason = `规则②：${x} < min(${rv.min}) 生成快照前已提交 → 可见`; }
+    else if (x >= rv.max)         { visible = false; reason = `规则③：${x} ≥ max(${rv.max}) 快照后才开启的事务 → 不可见，回溯上一版本`; }
+    else {
+      visible = !rv.m.includes(x);
+      reason = visible ? `规则④：${x} 不在活跃名单（已提交）→ 可见`
+                       : `规则④：${x} 在活跃名单 m_ids 里（生成快照时未提交）→ 不可见，回溯上一版本`;
+    }
+    steps.push({ i, x, v, visible, reason });
+  });
+
+  // 逐步动画
+  let si = 0;
+  const stepTimer = setInterval(() => {
+    if (si >= steps.length) {
+      clearInterval(stepTimer);
+      const last = steps.filter(s => s.visible).pop();
+      $("result").textContent = "读到的余额：¥" + (last ? last.v.money : "NULL");
+      $("result").className = "result " + (last && last.v.money >= 1000 ? "r1000" : "r500");
+      $("verdict").innerHTML += `<span class="rule ok">→ 最终读到版本 trx=${last ? last.x : "—"}：余额 ¥${last ? last.v.money : "NULL"}</span>`;
+      addLog(`[${mode}] 第${readCount}次读 → 余额 ¥${last ? last.v.money : "NULL"}（trx=${last ? last.x : "—"}）`);
+      renderChain(steps.length - 1, "visible");
+      return;
+    }
+    const s = steps[si];
+    renderChain(si, s.visible ? "visible" : "invisible");
+    $("verdict").innerHTML =
+      steps.slice(0, si + 1).map((x, k) =>
+        `<span class="rule ${x.visible ? "ok" : "no"}">版本 trx=${x.x}（¥${x.v.money}）：${x.reason}${x.visible ? " → <b>读到它！</b>" : ""}</span>`
+      ).join("");
+    si++;
+  }, 900);
+}
+
+// 初始动画：事务300 的修改已入链
+addLog("初始化完成：版本链含 trx=100(¥1000 已提交)。选择隔离级别，按剧本点按钮");
+setMode("RR");
+</script>
+</body>
+</html>

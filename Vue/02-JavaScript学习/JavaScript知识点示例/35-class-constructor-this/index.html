@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>class、constructor、this</title>
+</head>
+<body>
+  <h1>class、constructor、this</h1>
+  <button id="create-button" type="button">创建 Student 实例</button>
+  <button id="create-two-button" type="button">创建两个实例</button>
+  <p id="output"></p>
+
+  <script>
+    class Student {
+      constructor(name, score) {
+        this.name = name
+        this.score = score
+      }
+
+      describe() {
+        return this.name + '：' + this.score + ' 分'
+      }
+    }
+
+    document.querySelector('#create-button').addEventListener('click', () => {
+      const student = new Student('小明', 86)
+      document.querySelector('#output').textContent = student.describe()
+    })
+
+    document.querySelector('#create-two-button').addEventListener('click', () => {
+      const firstStudent = new Student('小明', 86)
+      const secondStudent = new Student('小红', 92)
+
+      document.querySelector('#output').textContent = [
+        firstStudent.describe(),
+        secondStudent.describe()
+      ].join('\n')
+    })
+  </script>
+</body>
+</html>

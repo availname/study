@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Java 后端学习中心 · 配套应用</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #f1f5f9; color: #1e293b; }
+  .layout { display: flex; min-height: 100vh; }
+  .sidebar { width: 210px; background: #0f172a; color: #cbd5e1; padding: 18px 0; position: fixed; height: 100vh; }
+  .logo { padding: 0 18px 16px; font-size: 15px; font-weight: bold; color: #7dd3fc; border-bottom: 1px solid #1e293b; }
+  .nav-item { padding: 11px 20px; cursor: pointer; font-size: 14px; border-left: 3px solid transparent; }
+  .nav-item:hover { background: #1e293b; }
+  .nav-item.on { background: #1e293b; border-left-color: #38bdf8; color: #7dd3fc; }
+  .main { flex: 1; margin-left: 210px; padding: 28px 34px; }
+  h1 { color: #0369a1; font-size: 24px; margin-bottom: 6px; }
+  .pageSub { color: #64748b; font-size: 13.5px; margin-bottom: 22px; }
+  h2.sec { color: #0f766e; font-size: 17px; margin: 22px 0 10px; border-left: 4px solid #14b8a6; padding-left: 10px; }
+  .grid { display: grid; gap: 14px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); } .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .card { background: #fff; border-radius: 14px; padding: 18px; border: 1px solid #e2e8f0;
+          box-shadow: 0 1px 4px rgba(15,23,42,.06); }
+  .card h3 { font-size: 15px; color: #0f172a; margin-bottom: 8px; }
+  .card p { font-size: 12.5px; color: #64748b; line-height: 1.7; }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11.5px; font-weight: bold; }
+  .pill.blue { background: #dbeafe; color: #1d4ed8; } .pill.green { background: #dcfce7; color: #15803d; }
+  .pill.orange { background: #ffedd5; color: #c2410c; } .pill.purple { background: #ede9fe; color: #6d28d9; }
+  .bar { height: 8px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-top: 8px; }
+  .bar div { height: 100%; background: linear-gradient(90deg,#38bdf8,#0ea5e9); border-radius: 6px; transition: width .5s; }
+  a, .lnk { color: #0284c7; text-decoration: none; cursor: pointer; }
+  a:hover, .lnk:hover { text-decoration: underline; }
+  input[type=text] { width: 100%; padding: 9px 14px; border: 1px solid #cbd5e1; border-radius: 10px;
+                     font-size: 14px; margin-bottom: 14px; }
+  /* 课程 */
+  .mod { background: #fff; border-radius: 14px; border: 1px solid #e2e8f0; margin-bottom: 12px; }
+  .mod-head { padding: 13px 18px; display: flex; align-items: center; gap: 10px; }
+  .mod-head .arrow { margin-left: auto; color: #94a3b8; }
+  .mod-body { padding: 6px 18px 12px; border-top: 1px solid #f1f5f9; }
+  .lesson { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px dashed #f1f5f9; }
+  .lesson:last-child { border-bottom: none; }
+  .lesson a { flex: 1; font-size: 13.5px; color: #334155; }
+  .lesson a:hover { color: #0284c7; }
+  .cb { width: 17px; height: 17px; accent-color: #0ea5e9; cursor: pointer; }
+  .st-pill { font-size: 10.5px; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
+  .st-pill.done { background: #dcfce7; color: #15803d; }
+  /* 卡片 */
+  .cardbox { cursor: pointer; }
+  .fcard { background: #fff; border-radius: 14px; border: 2px solid #c7d2fe; padding: 22px;
+           min-height: 190px; transition: background .3s; }
+  .fcard.back { background: #f0fdf4; border-color: #86efac; }
+  .fcard .mod-tag { margin-bottom: 12px; }
+  .fcard .q { font-size: 17px; font-weight: bold; color: #312e81; margin-bottom: 10px; }
+  .fcard .a { font-size: 14px; color: #1f2937; line-height: 1.9; white-space: pre-line; }
+  .fcard .hint { color: #94a3b8; font-size: 12px; }
+  .fcard .link { margin-top: 12px; font-size: 12px; color: #059669; }
+  .flipbtns { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .flipbtns button { border: none; border-radius: 8px; padding: 9px 16px; font-size: 13px; cursor: pointer; }
+  .b-know { background: #dcfce7; color: #15803d; } .b-again { background: #fee2e2; color: #b91c1c; }
+  .b-flip { background: #e0e7ff; color: #4338ca; } .b-nav { background: #e2e8f0; color: #475569; }
+  .cardtools { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .cardtools span { color: #64748b; font-size: 13px; }
+  .cardtools .lnk { font-size: 13px; }
+  .cardtools .lnk.on { font-weight: bold; color: #1d4ed8; }
+  /* 示意图 */
+  .dcard { cursor: pointer; transition: transform .2s; }
+  .dcard:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(2,132,199,.15); }
+  .dcard .ic { font-size: 34px; }
+  .dcard h3 { font-size: 14.5px; }
+  /* 踩坑 */
+  .pit { display: flex; gap: 14px; background: #fff; border-radius: 12px; border: 1px solid #e2e8f0;
+         padding: 14px 16px; margin-bottom: 10px; }
+  .pit .no { font-size: 22px; font-weight: bold; color: #dc2626; width: 38px; }
+  .pit .t { font-weight: bold; color: #1e293b; margin-bottom: 4px; font-size: 14px; }
+  .pit .d { font-size: 12.5px; color: #64748b; line-height: 1.7; }
+  /* 清单 */
+  .chk { display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 10px;
+         padding: 10px 16px; margin-bottom: 8px; border: 1px solid #e2e8f0; }
+  .chk input { width: 17px; height: 17px; accent-color: #14b8a6; }
+  .chk.done span { text-decoration: line-through; color: #94a3b8; }
+  .chk span { font-size: 13.5px; }
+  .statline { color: #64748b; font-size: 12.5px; margin: 8px 0; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div class="logo">📚 Java 后端学习中心</div>
+    <div class="nav-item on" data-v="dash">📊 学习仪表盘</div>
+    <div class="nav-item" data-v="courses">📚 课程（100 篇）</div>
+    <div class="nav-item" data-v="diagrams">🎨 交互示意图</div>
+    <div class="nav-item" data-v="cards">🃏 面试卡片</div>
+    <div class="nav-item" data-v="pits">🕳️ 踩坑实录</div>
+    <div class="nav-item" data-v="check">✅ 任务清单</div>
+  </div>
+  <div class="main" id="main"></div>
+</div>
+
+<script>
+"use strict";
+let view = "dash";
+/* ==================== 数据区 ==================== */
+const COURSES = [
+  { id:"mq", name:"消息队列（mq/）", icon:"📮", color:"blue",
+    mods:[
+      { name:"stage1-入门使用", base:"../mq/stage1-入门使用/", lessons:[
+        ["01-为什么需要消息队列","为什么需要消息队列（快递柜动画）"],
+        ["02-RabbitMQ安装与管理界面","RabbitMQ 安装与管理界面"],
+        ["03-HelloWorld-第一个生产者消费者","HelloWorld：第一个生产者消费者"],
+        ["04-五种工作模式","五种工作模式与交换机"]]},
+      { name:"stage2-底层原理", base:"../mq/stage2-底层原理/", lessons:[
+        ["01-AMQP协议与整体架构","AMQP 协议与整体架构"],
+        ["02-消息的存储与持久化机制","存储与持久化机制"],
+        ["03-可靠性基石-Confirm-Return-ACK","可靠性基石：Confirm/Return/ACK"],
+        ["04-三大MQ底层对比","三大 MQ 底层对比"]]},
+      { name:"stage3-问题解决", base:"../mq/stage3-问题解决/", lessons:[
+        ["01-消息丢失怎么防","消息丢失怎么防（可靠性动画）"],
+        ["02-消息重复怎么幂等","消息重复怎么幂等"],
+        ["03-消息顺序怎么保","消息顺序怎么保"],
+        ["04-消息堆积怎么治","消息堆积怎么治"],
+        ["05-延迟消息与死信队列","延迟消息与死信队列"]]},
+      { name:"stage4-高并发实战", base:"../mq/stage4-高并发实战/", lessons:[
+        ["01-削峰填谷-秒杀系统","削峰填谷：秒杀系统（漏斗动画）"],
+        ["02-订单超时自动取消","订单超时自动取消"],
+        ["03-综合案例-大促订单链路","综合案例：大促订单链路"]]}
+    ]},
+  { id:"redis", name:"Redis（redis/）", icon:"⚡", color:"orange",
+    mods:[
+      { name:"stage1-入门使用", base:"../redis/stage1-入门使用/", lessons:[
+        ["01-为什么需要Redis","为什么需要 Redis（超级服务员动画）"],
+        ["02-安装与redis-cli","安装与 redis-cli"],
+        ["03-五大基础数据类型","五大基础数据类型"],
+        ["04-三种特殊类型与Key进阶","三种特殊类型与 Key 进阶"],
+        ["05-SpringBoot整合Redis","SpringBoot 整合 Redis"]]},
+      { name:"stage2-底层原理", base:"../redis/stage2-底层原理/", lessons:[
+        ["01-线程模型与IO多路复用","线程模型与 IO 多路复用"],
+        ["02-数据结构底层","数据结构底层（SDS/跳表/rehash）"],
+        ["03-持久化RDB与AOF","持久化 RDB 与 AOF"],
+        ["04-过期删除与内存淘汰","过期删除与内存淘汰"],
+        ["05-主从哨兵与集群","主从、哨兵与集群"]]},
+      { name:"stage3-问题解决", base:"../redis/stage3-问题解决/", lessons:[
+        ["01-缓存穿透击穿雪崩","缓存三大天劫（奶茶店动画）"],
+        ["02-缓存与数据库一致性","缓存与数据库一致性"],
+        ["03-分布式锁","分布式锁（储物柜动画）"],
+        ["04-大Key与热Key","大 Key 与热 Key"]]},
+      { name:"stage4-高并发实战", base:"../redis/stage4-高并发实战/", lessons:[
+        ["01-秒杀库存与Lua原子操作","秒杀库存与 Lua 原子操作"],
+        ["02-排行榜签到与UV统计","排行榜、签到与 UV 统计"],
+        ["03-Redis做队列Stream与延迟任务","Stream 队列与延迟任务"],
+        ["04-缓存设计模式与选型总结","缓存设计模式与选型总结"]]},
+      { name:"stage5-类型场景实战", base:"../redis/stage5-类型场景实战/", lessons:[
+        ["01-String-短信验证码登录与防刷","String：验证码登录与防刷"],
+        ["02-Hash-电商购物车","Hash：电商购物车"],
+        ["03-List-Feed流时间线","List：Feed 流时间线（推拉模式）"],
+        ["04-Set-抽奖与社交关系","Set：抽奖与社交关系"],
+        ["05-ZSet-热搜榜","ZSet：实时热搜榜"],
+        ["06-Bitmap-签到系统","Bitmap：签到系统"],
+        ["07-HyperLogLog-UV统计大屏","HyperLogLog：UV 统计大屏"],
+        ["08-GEO-网约车附近司机","GEO：网约车附近司机"]]}
+    ]},
+  { id:"jcore", name:"Java 后端核心（java-core/）", icon:"☕", color:"purple",
+    mods:[
+      { name:"00-Java语言基石", base:"../java-core/00-Java语言基石/", lessons:[
+        ["01-集合框架","集合框架（ArrayList/HashMap 真相）"],
+        ["02-泛型反射与注解","泛型、反射与注解（Spring 根基）"],
+        ["03-Stream与Lambda","Stream 与 Lambda"],
+        ["04-异常体系与最佳实践","异常体系与最佳实践"]]},
+      { name:"01-并发编程", base:"../java-core/01-并发编程/", lessons:[
+        ["01-线程基础与生命周期","线程基础与生命周期（状态机动画）"],
+        ["02-synchronized与锁原理","synchronized 与锁升级"],
+        ["03-volatile与JMM内存模型","volatile 与 JMM（DCL 时序图）"],
+        ["04-CAS与原子类","CAS 与原子类（ABA 时序图）"],
+        ["05-线程池ThreadPoolExecutor","线程池（流程动画）"],
+        ["06-AQS与显式锁","AQS 与显式锁"],
+        ["07-并发容器与ThreadLocal","并发容器与 ThreadLocal（更衣柜动画）"],
+        ["08-并发实战与虚拟线程衔接","并发实战与虚拟线程衔接"]]},
+      { name:"02-JVM虚拟机", base:"../java-core/02-JVM虚拟机/", lessons:[
+        ["01-运行时内存区域与对象","运行时内存区域与对象"],
+        ["02-类加载机制","类加载机制与双亲委派"],
+        ["03-垃圾回收算法与收集器","垃圾回收（G1 动画链接）"],
+        ["04-JVM调优与常用工具","JVM 调优与 Arthas"],
+        ["05-常见OOM与线上排查","常见 OOM 与线上排查"]]},
+      { name:"03-MySQL深入", base:"../java-core/03-MySQL深入/", lessons:[
+        ["01-索引B+树与回表","索引 B+ 树与回表（两树动画）"],
+        ["02-事务与MVCC","事务与 MVCC（判定动画）"],
+        ["03-锁体系","锁体系与死锁排查"],
+        ["04-日志体系","日志体系与两阶段提交"],
+        ["05-性能优化","性能优化（深分页三方案）"],
+        ["06-实战架构","实战架构（分库分表）"]]},
+      { name:"04-Spring核心原理", base:"../java-core/04-Spring核心原理/", lessons:[
+        ["01-IoC容器与Bean生命周期","IoC 与 Bean 生命周期（动画）"],
+        ["02-AOP原理","AOP 原理与代理失效"],
+        ["03-事务原理与失效八连","事务原理与失效八连"],
+        ["04-SpringMVC请求流程","SpringMVC 请求流程"],
+        ["05-常用扩展机制","常用扩展机制（BPP/Event/条件装配）"]]},
+      { name:"05-微服务全家桶", base:"../java-core/05-微服务全家桶/", lessons:[
+        ["01-Nacos注册中心","Nacos 注册中心"],
+        ["02-Nacos配置中心","Nacos 配置中心（长轮询）"],
+        ["03-OpenFeign","OpenFeign 与重试陷阱"],
+        ["04-Gateway网关","Gateway 网关"],
+        ["05-Sentinel熔断限流","Sentinel 熔断限流"],
+        ["06-Seata分布式事务","Seata 分布式事务"]]},
+      { name:"06-设计模式", base:"../java-core/06-设计模式/", lessons:[
+        ["01-创建型：单例工厂建造者","创建型：单例/工厂/建造者"],
+        ["02-结构型：代理装饰门面适配器","结构型：代理/装饰/门面/适配器"],
+        ["03-行为型：策略模板观察者","行为型：策略/模板/观察者"],
+        ["04-SOLID原则与实战组合","SOLID 原则与秒杀模式复盘"]]},
+      { name:"07-网络基础", base:"../java-core/07-网络基础/", lessons:[
+        ["01-TCP三次握手四次挥手","TCP 握手挥手（接电话动画）"],
+        ["02-HTTP协议演进与HTTPS","HTTP 演进与 HTTPS（寄快递动画）"],
+        ["03-IO模型演进","IO 模型演进（epoll）"],
+        ["04-网络实战排查","网络实战排查"]]},
+      { name:"08-Git与协作", base:"../java-core/08-Git与协作.md", single:true, lessons:[
+        ["08-Git与协作","Git 实战工作流与协作"]]}
+    ]},
+  { id:"s6", name:"新技术专题（stage6/）", icon:"🚀", color:"orange",
+    mods:[
+      { name:"新技术 8 篇", base:"../stage6-新技术专题/", lessons:[
+        ["01-VirtualThreads虚拟线程","Virtual Threads 虚拟线程（餐厅动画）"],
+        ["02-SpringAI-LLM审核管道","Spring AI：LLM 审核管道"],
+        ["03-Redis向量检索与语义缓存","Redis 向量检索与语义缓存"],
+        ["04-OpenTelemetry全链路追踪","OpenTelemetry 全链路追踪"],
+        ["05-GitHubActions-CICD","GitHub Actions CI/CD"],
+        ["06-Debezium-CDC与Outbox模式","Debezium CDC 与 Outbox"],
+        ["07-Testcontainers现代集成测试","Testcontainers 现代集成测试"],
+        ["08-响应式与虚拟线程路线之争","响应式 vs 虚拟线程路线之争"]]}
+    ]},
+  { id:"s7", name:"AI 应用开发（stage7/）", icon:"🤖", color:"orange",
+    mods:[
+      { name:"AI 应用开发 8 篇", base:"../stage7-AI应用开发/", lessons:[
+        ["01-LLM应用开发全景","LLM 应用开发全景"],
+        ["02-SpringAI与流式输出","Spring AI 与流式输出"],
+        ["03-RAG与向量检索","RAG 与向量检索"],
+        ["04-AI工程化-成本降级与评测","AI 工程化：成本降级与评测"],
+        ["05-RAG进阶六种升级","RAG 进阶六种升级"],
+        ["06-AI工作流与Agent","AI 工作流与 Agent"],
+        ["07-MCP协议与AI工具生态","MCP 协议与 AI 工具生态"],
+        ["08-AI安全与评测","AI 安全与评测"]]}
+    ]},
+  { id:"proj", name:"项目与复盘", icon:"🏗️", color:"green",
+    mods:[
+      { name:"mq-mall 项目", base:"../mq/mq-mall/", lessons:[
+        ["README","mq-mall README（架构+API+教程对照）"]]},
+      { name:"community 项目", base:"../community/", lessons:[
+        ["README","community README（架构+API+对照）"]]},
+      { name:"踩坑实录", base:"../mq/", lessons:[
+        ["踩坑实录-完整复盘","踩坑实录：12 个真实坑完整复盘"]]}
+    ]}
+];
+
+const DIAGRAMS = [
+  { f:"why-mq.html",            ic:"📦", t:"为什么用 MQ（快递柜）", d:"同步阻塞 vs 异步解耦，三大好处一页看懂", tag:"MQ" },
+  { f:"redis-fast.html",        ic:"⚡", t:"Redis 为什么快（超级服务员）", d:"BIO vs 单线程+epoll，四要点对照", tag:"Redis" },
+  { f:"virtual-threads.html",   ic:"🦸", t:"虚拟线程 vs 平台线程", d:"专属服务员 vs 灵活跑位（pinning 比喻）", tag:"并发" },
+  { f:"tcp-handshake.html",     ic:"📞", t:"TCP 握手挥手（接电话）", d:"三次/四次气泡对话 + TIME_WAIT 由来", tag:"网络" },
+  { f:"cache-3problems.html",   ic:"☕", t:"缓存三大问题（奶茶店）", d:"穿透/击穿/雪崩 + 各解法，压力条可视化", tag:"Redis" },
+  { f:"http-journey.html",      ic:"📮", t:"HTTP 请求旅程（寄快递）", d:"8 站路径动画：写单→DNS→TCP→TLS→…", tag:"网络" },
+  { f:"mysql-transaction.html", ic:"🏦", t:"事务 ACID（记账本）", d:"转账断电回滚 = 原子性；小票 = 持久性", tag:"MySQL" },
+  { f:"threadlocal.html",       ic:"🧥", t:"ThreadLocal（更衣柜）", d:"一人一柜互不干扰 + 泄漏原理", tag:"并发" },
+  { f:"distributed-lock.html",  ic:"🔒", t:"分布式锁（公共储物柜）", d:"NX 抢锁/requestId 释放/EX 断电兜底", tag:"Redis" },
+  { f:"thread-pool.html",       ic:"🧵", t:"线程池执行流程", d:"核心→队列→临时→拒绝（可调参数洪峰）", tag:"并发" },
+  { f:"thread-lifecycle.html",  ic:"🔄", t:"线程六状态流转", d:"点按钮触发事件看状态球移动", tag:"并发" },
+  { f:"bptree.html",            ic:"🌳", t:"B+ 树索引与回表", d:"两棵树对照：回表 vs 覆盖索引", tag:"MySQL" },
+  { f:"seckill-funnel.html",    ic:"🌊", t:"秒杀四层漏斗", d:"10w 用户→DB 只收 1000 单", tag:"MQ" },
+  { f:"reliability.html",       ic:"🛡️", t:"消息可靠性全链路", d:"Confirm失败/消费失败/重启丢Confirm 四场景", tag:"MQ" },
+  { f:"spring-bean-lifecycle.html",ic:"🌱", t:"Bean 生命周期+循环依赖", d:"十一步流程 + 三级缓存流转", tag:"Spring" },
+  { f:"microservice-arch.html", ic:"🏗️", t:"微服务架构全景", d:"10 组件点读 + 请求旅程动画", tag:"微服务" },
+  { f:"g1-gc.html",             ic:"♻️", t:"G1 垃圾回收", d:"Region 化堆 + Minor/Mixed GC", tag:"JVM" },
+  { f:"mvcc.html",              ic:"🔗", t:"MVCC 版本链与 ReadView", d:"RC/RR 判定动画（读到 1000 还是 500）", tag:"MySQL" },
+  { f:"payment-state-machine.html", ic:"💳", t:"支付状态机 CAS 竞态", d:"支付 vs 关单：CAS 仲裁 vs 双写资损", tag:"系统设计" },
+  { f:"kafka-fast.html",        ic:"🚀", t:"Kafka 为什么快（五支柱）", d:"顺序写/页缓存/零拷贝/批量压缩/分区并行对照实验", tag:"MQ" },
+  { f:"cas-aba.html",           ic:"⚛️", t:"CAS/ABA 时序竞态", d:"值相同≠没发生过：版本号怎么拆穿改走又改回", tag:"并发" },
+  { f:"redlock-debate.html",    ic:"⚖️", t:"RedLock 论战与 Fencing Token", d:"Martin vs antirez：GC停顿/时钟跳变/拒收旧凭证", tag:"Redis" },
+  { f:"delay-task.html",        ic:"⏰", t:"延迟任务双保险", d:"延迟消息(主) vs 扫表(兜) vs CAS(裁) 四结局", tag:"MQ" }
+];
+
+const CARDS = [
+  { m:"并发", q:"synchronized 原理与锁升级？", a:"Mark Word 存锁状态 + Monitor(Owner/EntryList/WaitSet)。升级链：偏向锁(单线程免CAS，JDK15废弃)→轻量级(CAS自旋，交替竞争)→重量级(OS互斥量，激烈竞争)。可重入靠计数器。附带可见性保证(进出同步块刷主存)。" },
+  { m:"并发", q:"volatile 作用？能替代锁吗？", a:"可见性(lock前缀刷主存+使其它核缓存失效)+有序性(内存屏障禁重排，DCL必加)。不保证原子性(count++仍交错)。不能替代锁——复合操作用锁或CAS。判断用 happens-before 规则链。" },
+  { m:"并发", q:"线程池七参数与执行流程？", a:"core/max/keepAlive/unit/workQueue/threadFactory/handler。流程：核心未满建核心→满则入队→队满建临时到max→触发拒绝。先排队后扩容→无界队列让max失效(Executors坑OOM)。生产手写+有界队列+自定义拒绝+动态调参。" },
+  { m:"并发", q:"CAS 是什么？ABA 怎么解决？", a:"CPU原子指令(比较+交换一步)。①ABA(值回旧值但历史已变→AtomicStampedReference版本号)②自旋耗CPU(LongAdder分段)③单变量限制。分布式同思想：乐观锁版本号。" },
+  { m:"并发", q:"ThreadLocal 内存泄漏？", a:"Thread→ThreadLocalMap：key弱引用(可回收变null)、value强引用——线程池线程不死则value泄漏。规约：finally remove()。另：不能跨线程传递。" },
+  { m:"并发", q:"ConcurrentHashMap JDK8 原理？", a:"空桶CAS写入；非空桶synchronized锁头节点(粒度=桶)；链表≥8且表≥64转红黑树；多线程协同扩容；CounterCell分段计数(LongAdder思想)。key/value不允许null。" },
+  { m:"并发", q:"死锁四条件与排查？", a:"互斥/持有等待/不可剥夺/循环等待。排查：jstack找deadlock、Arthas thread -b。预防：固定加锁顺序、tryLock超时、缩小锁粒度。" },
+  { m:"JVM", q:"内存区域划分？", a:"共享：堆(Eden+2Survivor/老年代)、元空间(类信息，本地内存)。私有：虚拟机栈(栈帧)、本地方法栈、程序计数器。异常：堆OOM heap space、元空间OOM、栈StackOverflowError。" },
+  { m:"JVM", q:"对象什么时候被回收？", a:"可达性分析：GC Roots(栈变量/静态/常量/JNI/活跃线程)不可达即垃圾。不用引用计数(循环引用)。四引用：软(缓存内存不足回收)、弱(ThreadLocal key)、虚(堆外管理)。" },
+  { m:"JVM", q:"G1 vs CMS？为什么 G1 成默认？", a:"CMS标记清除→碎片+并发失败退化Full GC。G1：Region化堆(2048块逻辑分代)+按回收收益挑Region+MaxGCPauseMillis停顿目标模型+无碎片。ZGC再进：着色指针亚毫秒停顿与堆大小无关。" },
+  { m:"JVM", q:"CPU 100% 怎么排查？", a:"top定进程→top -Hp定线程→TID转16进制→jstack对应堆栈。常见：死循环/频繁GC/正则回溯/大对象序列化。Arthas thread -n 3 一步到位。" },
+  { m:"JVM", q:"内存泄漏怎么排查？", a:"判定：Full GC后水位不回落且抬升。jmap dump(OOM自动dump先配)→MAT支配树→凶手：无界缓存/ThreadLocal/监听器/连接。修复：上限/TTL/remove。" },
+  { m:"MySQL", q:"为什么用 B+ 树？", a:"磁盘IO是瓶颈：B+非叶子只存键(16KB页放更多键，千万行3~4层)；叶子链表支持范围查询。对比：哈希无范围、二叉太高、B树非叶子带数据树更高。" },
+  { m:"MySQL", q:"回表/覆盖索引/最左前缀？", a:"二级索引叶子只存(索引列+主键)→查非索引列需拿主键回聚簇树再查=回表。查询列全在索引=覆盖(Using index)。联合索引按第一列排→最左前缀，范围列之后失效。" },
+  { m:"MySQL", q:"四大隔离级别？MVCC 原理？", a:"RU/RC/RR(默认)/串行化。MVCC=隐藏列(trx_id/roll_pointer)+undo版本链+ReadView(活跃名单)。判定：==自己✓/<min✓/≥max✗/在名单✗。RC每次新ReadView，RR复用首次。" },
+  { m:"MySQL", q:"索引失效场景？", a:"函数包裹列、隐式类型转换(varchar=数字)、左模糊like、OR侧无索引、≠/not in(优化器理性放弃)。EXPLAIN：type=ALL全表/key=NULL/rows大。" },
+  { m:"MySQL", q:"redo/undo/binlog 区别？两阶段提交为什么？", a:"redo(InnoDB物理循环写，crash-safe)/undo(逻辑反操作，回滚+MVCC)/binlog(Server逻辑追加，复制+CDC)。两阶段提交(redo prepare→binlog→commit)保证两者一致→主从一致。双1配置。" },
+  { m:"MySQL", q:"大表深分页优化？", a:"LIMIT 100万,10 扫100万行丢弃。方案A键集游标：WHERE id>上页末尾 LIMIT 10(最优，游标翻页)；方案B延迟关联：子查询覆盖索引取id再回表(兼容跳页)。" },
+  { m:"MySQL", q:"死锁排查预防？", a:"SHOW ENGINE INNODB STATUS 看 LATEST DEADLOCK；8.0 查 data_lock_waits。预防：短事务、按固定顺序加锁、更新条件走索引、防重用唯一索引替代先查后插(间隙锁共存互堵)。" },
+  { m:"Redis", q:"Redis 为什么快？", a:"内存+命令执行单线程(无锁无切换)+epoll多路复用+高效数据结构(SDS/跳表/listpack)。6.0 IO多线程但命令仍单线程。代价：慢命令阻塞全端(禁KEYS防大Key)。" },
+  { m:"Redis", q:"穿透/击穿/雪崩？", a:"穿透(查不存在)→空值缓存+布隆过滤器+参数校验；击穿(热点过期瞬间)→互斥锁重建/逻辑过期；雪崩(大面积同时失效)→TTL抖动+多级缓存+高可用+DB熔断。监控命中率。" },
+  { m:"Redis", q:"缓存与DB一致性？", a:"Cache Aside：读-未命中回写(带TTL)；写-先更DB再删缓存(幂等无覆盖)。残留窗口极小；高要求延迟双删(MQ延迟)；复杂系统binlog(Canal)→MQ→删缓存零侵入。强一致放弃缓存。" },
+  { m:"Redis", q:"分布式锁实现？", a:"SET key requestId NX EX 原子抢锁；释放Lua校验requestId(防误删他人锁)；看门狗续期(Redisson)。主从切换可能双持锁→正确性场景DB兜底(乐观锁/唯一索引)，Redis锁是效率层。" },
+  { m:"Redis", q:"Redisson 看门狗何时生效？", a:"只有不传 leaseTime 才启用：lock()或两参tryLock(waitTime,unit)→默认30s每10s续回；三参tryLock(3,30,SECONDS)传了leaseTime反而关闭看门狗。释放必须isHeldByCurrentThread防IllegalMonitorState/误删他人锁。" },
+  { m:"Redis", q:"大Key/热Key？", a:"大Key(String>10KB/集合>5000)：阻塞全端、UNLINK异步删、分桶/上限。热Key(单key QPS极高)：本地缓存+读写分离+热写打散。发现：--bigkeys/top-key上报。" },
+  { m:"Redis", q:"持久化 RDB vs AOF？", a:"RDB全量快照(文件小恢复快，分钟级丢)，fork+COW；AOF命令日志(everysec丢1秒，重写压缩)。生产双开+混合持久化(AOF重写base用RDB格式)——恢复快+丢数据少。" },
+  { m:"Redis", q:"主从/哨兵/集群？", a:"主从异步复制(切换丢尾部)；哨兵(主观下线→客观下线→选主，3个奇数)；Cluster 16384槽(CRC16%16384)，多key同槽哈希标签。容量够用选哨兵、超大选Cluster或云托管。" },
+  { m:"MQ", q:"为什么用 MQ？三大作用？", a:"异步提速(490ms→52ms)/解耦(新下游零改动)/削峰填谷(洪峰进队列匀速消费)。不该用：强一致同步、需要即时结果、QPS极低。" },
+  { m:"MQ", q:"消息丢失怎么防？", a:"三端：生产端Confirm+本地消息表(业务+消息同事务，afterCommit发送，定时补偿)；Broker持久化+副本；消费端手动ACK+重试+死信。Confirm丢失窗口由补偿兜底，重复由幂等拦截。" },
+  { m:"MQ", q:"消息重复怎么幂等？", a:"at-least-once必重复，业务幂等两层：Redis setnx快去重(24h TTL，失败回滚键)+DB唯一索引兜底；天然幂等优先(状态机CAS)。幂等键=全局唯一业务ID(内存计数器重启撞号坑)；跳过打日志。" },
+  { m:"MQ", q:"消息顺序怎么保证？", a:"业务分区有序即可。RocketMQ：MessageQueueSelector按key选队列+Orderly消费；Kafka分区内有序(key路由+重试乱序注意)；RabbitMQ单队列单消费者。业务侧版本号丢弃兜底。" },
+  { m:"MQ", q:"消息堆积怎么办？", a:"诊断(消费者挂/慢/生产暴涨)→修复瓶颈→扩容三步(扩队列+搬运+扩消费者)→过期消息丢弃补偿。预防：批量消费+限速保护下游+堆积/延迟告警。" },
+  { m:"MQ", q:"延迟消息怎么做？", a:"RabbitMQ：TTL+DLX(队头阻塞→档位拆队列)或延迟插件；RocketMQ 18等级/5.x任意时间。订单超时：延迟消息+扫表双保险，CAS防与支付竞态。" },
+  { m:"MQ", q:"事务消息/最终一致？", a:"本地消息表(业务+消息同事务，afterCommit发送，定时补偿)→RocketMQ半消息(内置)。选型：同步短链路强一致Seata AT；异步长链路MQ最终一致；资金TCC。消费端幂等永远要有。" },
+  { m:"Spring", q:"Bean 生命周期？", a:"实例化→属性注入→Aware→BPP前→初始化(@PostConstruct→afterPropertiesSet→init-method)→BPP后(AOP代理生成处)→使用→销毁(@PreDestroy→destroy-method)。" },
+  { m:"Spring", q:"循环依赖三级缓存？", a:"一级成品/二级早期引用/三级工厂(延迟决定AOP代理)。字段注入可解、构造器注入无解(@Lazy)。三级而非两级：延迟判断'是否提前代理'，不破坏代理后置生成。" },
+  { m:"Spring", q:"AOP 失效场景？", a:"万变不离'没走代理'：自调用this、非public、final/static、new出来的对象、注解标接口(CGLib)。修复：拆bean/注入自己@Lazy/getBean。" },
+  { m:"Spring", q:"@Transactional 失效八连？", a:"①自调用②非public③异常被catch吞④默认不回滚受检异常(rollbackFor=Exception)⑤事务内多线程(ThreadLocal连接隔离)⑥传播误用⑦MyISAM⑧类不受管理。事务=ThreadLocal绑定连接，afterCommit再发MQ。" },
+  { m:"微服务", q:"Nacos 注册中心原理？", a:"临时实例心跳5s(AP/Distro)+持久实例服务端探测(CP/Raft)；保护阈值防全摘除。配置中心长轮询29.5s准实时刷新(@RefreshScope)。对比：Eureka纯AP停更、ZK纯CP。" },
+  { m:"微服务", q:"Feign 注意什么？", a:"声明式HTTP(代理+服务发现+负载均衡)。超时显式配、写接口禁自动重试(重试放大写，下游幂等兜底)、RequestInterceptor传登录态/traceId、Sentinel fallback降级。" },
+  { m:"微服务", q:"Sentinel 限流熔断？", a:"限流算法(固定/滑动/令牌桶漏桶)；熔断三态(关闭→打开→半开探测)；降级返回兜底(本地缓存/默认值)。规则控制台动态+Nacos持久化。防下游故障沿链路雪崩。" },
+  { m:"微服务", q:"Seata AT 原理？", a:"两阶段+undo_log：一阶段记录前后镜像+业务SQL直接本地提交；全局回滚按前镜像反向补偿(校验后镜像防脏写=CAS)。对比本地消息表：准实时强一致但全局锁开销；异步长链路MQ最终一致。" },
+  { m:"语言", q:"HashMap 的 put 流程和扩容？", a:"hash高低16位异或→(n-1)&hash定位桶→空桶直放/链表尾插→≥8且表≥64转红黑树。负载0.75→扩容2倍：新位置只有原位或原位+旧容量两种(无需重算hash)。JDK7头插死循环、8尾插修，但仍线程不安全→CHM。" },
+  { m:"语言", q:"ArrayList vs LinkedList？", a:"ArrayList随机访问O(1)+CPU缓存局部性；LinkedList的O(1)中间插删需先O(N)定位，实测全面落后。默认ArrayList；两端队列选ArrayDeque/BlockingQueue。扩容1.5倍。" },
+  { m:"网络", q:"TCP 为什么三次握手四次挥手？", a:"三次=信息充分最小(两次无法防历史SYN；SYN+ACK可合并)。四次=全双工，收到FIN只表示对方不发，自己数据发完才能FIN。TIME_WAIT等2MSL：保最后ACK可达+旧报文消亡。" },
+  { m:"网络", q:"HTTP 1.1/2/3 区别？", a:"1.1 keep-alive但有HTTP层队头阻塞；2二进制分帧多路复用(一条TCP并发多流)+HPACK，但TCP丢包仍阻塞；3 QUIC(UDP)解决TCP队头阻塞+连接迁移+0-RTT。" },
+  { m:"网络", q:"BIO/NIO/AIO 与 epoll？", a:"BIO一连接一线程；NIO多路复用(Selector集中监听就绪事件)；AIO内核完成回调(Linux支持弱少用)。epoll：事件注册红黑树+就绪列表O(1)事件驱动(vs select线性扫描)。Redis/Netty/Nginx基于它。" },
+  { m:"系统设计", q:"支付系统怎么设计？", a:"四关卡：①状态机CAS(UPDATE WHERE status=待支付，解支付vs关单竞态，输方按状态分支——关单后支付走自动退款)②回调幂等(渠道流水号唯一索引+状态CAS双层)③掉单补偿(异步回调为主+定时查单补状态，T+1三单对账兜底)④金额安全(单位分禁double/回调金额比对/验签防伪造)。下游本地消息表发order.paid事件解耦。" },
+  { m:"Redis", q:"RedLock 为什么生产不用？fencing token？", a:"向5个独立Redis过半抢锁，试图解决主从切换丢锁。Martin两记重拳：GC停顿下锁过期客户端恢复继续写(任何锁都有)；依赖时钟准确(NTP跳变绕过多数派)。工程结论：效率锁Redisson单实例够；正确性靠存储层CAS/唯一索引(=fencing token单调递增凭证拒收旧值)；跨服务协调ZooKeeper/etcd。Redisson已废弃RedLock。" },
+  { m:"MQ", q:"Kafka 为什么快？", a:"五支柱：①顺序写(日志末尾追加，600MB/s vs 随机100KB/s差3~4量级)②页缓存(走OS PageCache不进JVM堆，热数据≈内存速+零GC)③零拷贝(消费sendfile不过用户态，4拷贝4切换→2拷贝；SSL/格式转换失效)④批量+压缩(攒批摊薄往返+整批lz4)⑤分区并行(Partition=并行单位，消费者数≤分区数)。总纲：随机→顺序，多次搬运→最少搬运。" },
+  { m:"MQ", q:"延迟任务方案怎么选？", a:"分层：单机零件DelayQueue/时间轮(Netty O(1))；小体量DB扫表(简单最稳)；有Redis用ZSet(score=到期时间戳，ZREM原子抢占)；有MQ用TTL+DLX(档位拆队列防队头阻塞)或RocketMQ延迟消息(18等级/5.x任意)。Redis过期通知❌不能当主方案(不及时+不落盘丢事件)。生产标配：延迟消息为主+低频扫表兜底+执行端CAS幂等。" },
+  { m:"工程规范", q:"日志规范怎么定？", a:"slf4j门面+logback禁System.out；六要素(时间/级别/线程/traceId/位置/业务键值对)；级别即责任(ERROR配告警必人跟进/跳过路径也打日志)；占位符不拼接、异常作最后参打全堆栈、全局异常处理器统一ERROR；MDC traceId全链路(MQ随消息头传)；AsyncAppender宁丢日志不堵业务；敏感信息脱敏。" },
+  { m:"工程规范", q:"接口设计规范？", a:"URI名词复数+层级从属，动作用子资源+动词(/orders/{no}/pay)；动词幂等表(PUT/DELETE幂等，POST/PATCH非→自动重试只敢在幂等动词)；状态码保语义+统一响应体{code,msg,data}；错误码按模块分段；列表三件套分页/排序/过滤；安全：鉴权/越权先查归属/防重放(timestamp+nonce+签名)/限流429/脱敏。" },
+  { m:"OS 基础", q:"进程和线程的区别？", a:"进程=资源分配单位(独立虚拟地址空间、崩溃隔离)；线程=调度单位(共享堆、私有栈/寄存器)。切进程换页表TLB失效贵，切线程只换现场(1~10μs=线程池参数上限依据)。线程共享堆=JMM/锁/ThreadLocal问题的物理根源；虚拟线程=用户态线程M:N映射绕开内核调度成本。" },
+  { m:"OS 基础", q:"用户态/内核态？虚拟内存？", a:"内核态独占硬件，用户态经系统调用请求(每次1~5μs过路费)——零拷贝/锁升级/epoll全是在省这道费。虚拟内存=每进程独享地址空间由页表映射物理内存(未映射触发缺页调入)：进程隔离的根；PageCache(内核页缓存磁盘)与mmap(文件映射进地址空间)都建立在它之上。" }
+];
+
+const PITS = [
+  { no:1,  t:"MQ 消息丢失三端防", d:"生产端Confirm+本地消息表/Broker持久化/消费端手动ACK+重试死信——三段各有堵法" },
+  { no:2,  t:"幂等误杀：内存发号器重启归零", d:"订单号撞24h内旧幂等键→消息被静默跳过、无日志无死信、数据静默丢失。修复：雪花ID+跳过打日志（坑二/九）" },
+  { no:3,  t:"本地消息表 insertPending 被遗漏", d:"可靠性基建形同虚设——写完基建必须做'存在性回归测试'" },
+  { no:4,  t:"扫表兜底误关秒杀单→Redis/DB 漂移", d:"兜底逻辑筛选条件必须对齐业务语义（排除秒杀单），双库存归还必须两边同步" },
+  { no:5,  t:"对账公式写窄：正确数据报'不一致'", d:"对账是'用代码表达业务恒等式'——先手工验算两边，再怀疑数据" },
+  { no:6,  t:"docker-secrets-engine 损坏致 Docker 反复崩", d:"管理员删 engine.sock 残留+重启；切勿点 Reset to factory defaults" },
+  { no:7,  t:"镜像拉取中断/停滞", d:"DaoCloud 镜像源直拉+tag 回名（零侵入）；确认停滞要先排除'tail 吞进度'的观察假象" },
+  { no:8,  t:"缺 spring-retry 依赖：消费重试配置被静默忽略", d:"失败直接进死信没有重试——可靠性参数必须实测一次失败路径" },
+  { no:9,  t:"两道防线交互死角：幂等键残留误杀重试", d:"状态机CAS短路return绕过dedup.fail清理→残留键误杀后续请求。加防线必须过'同时触发'矩阵" },
+  { no:10, t:"事务纪律防御检查的'半覆盖'", d:"防御检查抛异常防住了消息，但检查前已执行的 insert 没回滚——副作用必须在事务边界内" },
+  { no:11, t:"curl 中文参数不编码 → Tomcat 400", d:"RFC 3986 非法字符在 Tomcat 层直接拒，请求没进 Spring——日志全静默，用 --data-urlencode" },
+  { no:12, t:"代理截断 22 端口：git push 间歇失败", d:"Connection closed by 28.0.0.7 = 本地代理干预——ssh.github.com:443 备用通道一劳永逸" }
+];
+
+const CHECKS = [
+  "Docker 起 mq-mall 三件套 + redis-learn，两个 demo 工程跑通",
+  "mq 五种工作模式 demo 全跑通；Confirm/Return/死信链路演练",
+  "mq-mall：下单→支付→超时关单→秒杀压测→reconcile 对账一致",
+  "redis 五大类型业务化练习；分布式锁并发抢锁演示",
+  "redis stage3 三大问题 + 一致性 + 锁 + 大Key 全部过一遍",
+  "java-core 并发八篇的 main 方法示例全部跑过",
+  "java-core JVM 五篇 + Arthas 本机实操一遍",
+  "java-core MySQL 索引/MVCC/锁 三篇学完 + explain 实操",
+  "java-core Spring 五篇 + 事务失效八连背熟",
+  "stage6 虚拟线程/Spring AI/向量检索 三篇学完",
+  "community 全 API 路线走通（README 十一步）",
+  "diagrams 23 个示意图全部点开玩过一遍",
+  "两个项目各写一段简历描述（见简历话术）并能答出追问",
+  "模拟面试 12 条追问链全部无卡壳讲完",
+  "面试速查手册过三遍，每题能口述 60 秒"
+];
+
+const ROAD = [
+  { name:"入门（两周）", desc:"先会用：RabbitMQ 五种模式 + Redis 五大类型，边学边玩两个 demo 工程的接口", mods:["MQ","Redis"] },
+  { name:"原理（三周）", desc:"再懂原理：Redis 底层 + MQ 底层 + Java 并发八篇 + JVM 五篇（面试王炸，慢点多动手）", mods:["并发","JVM"] },
+  { name:"排坑（两周）", desc:"然后会排坑：Redis 三大天劫/一致性/锁 + MQ 丢重乱堆/死信 + MySQL 索引/MVCC/日志", mods:["Redis","MQ","MySQL"] },
+  { name:"实战（三周）", desc:"最后敢上高并发：秒杀漏斗/订单超时/大促链路 + Spring 事务八连 + 微服务全家桶", mods:["MQ","Spring","微服务"] },
+  { name:"扩展与就业", desc:"stage6 新技术 + 面试速查 + 追问链 + 简历话术 + 两个项目推 GitHub 配 CI", mods:["MQ","Redis","并发"] }
+];
+
+/* ==================== 工具 ==================== */
+const LS = {
+  read(k){ try { return new Set(JSON.parse(localStorage.getItem(k)||"[]")); } catch(e){ return new Set(); } },
+  write(k, set){ localStorage.setItem(k, JSON.stringify([...set])); },
+  done(){ return this.read("jc_done"); },
+  known(){ return this.read("jc_known"); },
+  checks(){ return this.read("jc_checks"); },
+  saveDone(s){ this.write("jc_done", s); },
+  saveKnown(s){ this.write("jc_known", s); },
+  saveChecks(s){ this.write("jc_checks", s); },
+  getDoneCount(){ return this.done().size; }
+};
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+function pill(text, color){ return `<span class="pill ${color||'blue'}">${text}</span>`; }
+
+/* ==================== 视图：仪表盘 ==================== */
+function renderDash(){
+  const total = COURSES.reduce((s,c)=>s+c.mods.reduce((n,m)=>n+m.lessons.length,0),0);
+  const done = LS.getDoneCount();
+  const known = CARDS.filter(c=>LS.known().has(c.q)).length;
+  const checks = CHECKS.filter(c=>LS.checks().has(String(CHECKS.indexOf(c)))).length;
+  $("main").innerHTML = `
+  <h1>📊 学习仪表盘</h1>
+  <div class="pageSub">进度自动保存在浏览器本地（localStorage）。换浏览器不同步。</div>
+  <div class="grid g4">
+    <div class="card"><h3>课程完成度</h3><div style="font-size:30px;font-weight:bold;color:#0284c7">${done}<span style="font-size:14px;color:#94a3b8"> / ${total} 篇</span></div>
+      <div class="bar"><div style="width:${total?Math.round(done/total*100):0}%"></div></div></div>
+    <div class="card"><h3>面试卡片已掌握</h3><div style="font-size:30px;font-weight:bold;color:#16a34a">${LS.known().size}<span style="font-size:14px;color:#94a3b8"> / ${CARDS.length} 张</span></div>
+      <div class="bar"><div style="width:${Math.round(LS.known().size/CARDS.length*100)}%"></div></div></div>
+    <div class="card"><h3>任务清单</h3><div style="font-size:30px;font-weight:bold;color:#0f766e">${checks}<span style="font-size:14px;color:#94a3b8"> / ${CHECKS.length}</span></div>
+      <div class="bar"><div style="width:${Math.round(checks/CHECKS.length*100)}%"></div></div></div>
+    <div class="card"><h3>🎨 示意图</h3><div style="font-size:30px">${DIAGRAMS.length} 个</div><p>交互动画画廊随时回看</p></div>
+  </div>
+  <h2 class="sec">学习路线（按顺序走）</h2>
+  <div class="grid g2">
+    ${ROAD.map((r,i)=>`<div class="card"><h3>第 ${i+1} 步 · ${r.name}</h3><p>${r.desc}</p>
+      <div style="margin-top:8px">${r.mods.map(m=>pill(m,"blue")).join(" ")}</div></div>`).join("")}
+  </div>
+  <h2 class="sec">🧭 快速入口</h2>
+  <div class="grid g3">
+    <div class="card dcard" onclick="go('cards')"><div class="ic">🃏</div><h3>面试卡片</h3><p>翻转卡模式刷 ${CARDS.length} 张高频题</p></div>
+    <div class="card dcard" onclick="go('diagrams')"><div class="ic">🎨</div><h3>示意图画廊</h3><p>${DIAGRAMS.length} 个交互动画（生活比喻版+技术版）</p></div>
+    <div class="card dcard" onclick="go('pits')"><div class="ic">🕳️</div><h3>踩坑实录</h3><p>${PITS.length} 个真实坑：现象→排查→根因→修复</p></div>
+  </div>`;
+}
+
+/* ==================== 视图：课程 ==================== */
+let openMods = {};
+function renderCourses(){
+  const filter = ($("q") ? $("q").value : "").toLowerCase();
+  let html = `<h1>📚 课程（共 ${COURSES.reduce((s,c)=>s+c.mods.reduce((n,m)=>n+m.lessons.length,0),0)} 篇）</h1>
+  <div class="pageSub">勾选标记完成状态；点击标题打开对应文档（IDE 或浏览器）</div>
+  <input type="text" id="q" placeholder="🔍 搜索课程标题…" value="${esc(filter)}">`;
+  COURSES.forEach(c => {
+    let doneN = 0, total = 0;
+    c.mods.forEach(m => total += m.lessons.length);
+    c.mods.forEach(m => m.lessons.forEach(l => { if(LS.done().has(c.id+"/"+l[0])) doneN++; }));
+    html += `<div class="mod open"><div class="mod-head">
+      ${pill(c.icon+" "+c.name, c.color)}
+      <span style="color:#94a3b8;font-size:12px">${doneN}/${total} 已完成</span></div><div class="mod-body">`;
+    c.mods.forEach(m => {
+      html += `<div style="color:#64748b;font-size:12px;margin:10px 0 4px">${m.name}</div>`;
+      m.lessons.forEach(l => {
+        const key = c.id+"/"+l[0];
+        const done = LS.done().has(key);
+        html += `<div class="lesson">
+          <input type="checkbox" class="cb" ${done?"checked":""} onchange="toggleDone('${key}')">
+          <a href="${m.base}${l[0]}.md">${l[1]}</a>
+          ${done?pill("✓ 完成","green"):pill("未完成","blue")}
+        </div>`;
+      });
+    });
+    html += `</div></div>`;
+  });
+  $("main").innerHTML = html;
+  $("q").addEventListener("input", renderCourses);
+}
+function toggleDone(key){
+  const s = LS.done();
+  if(s.has(key)) s.delete(key); else s.add(key);
+  LS.saveDone(s); renderCourses();
+}
+
+/* ==================== 视图：示意图 ==================== */
+function renderDiagrams(){
+  const cards = DIAGRAMS.map(d => `
+    <div class="card dcard" onclick="window.open('${d.f}','_blank')">
+      <div class="ic">${d.ic}</div><h3>${d.t}</h3><p>${d.d}</p>
+      ${pill(d.tag, d.tag==="MQ"?"blue":d.tag==="Redis"?"orange":d.tag==="并发"?"purple":d.tag==="MySQL"?"green":d.tag==="网络"?"blue":"purple")}
+      <p style="margin-top:8px;color:#0284c7">↗ 新窗口打开交互演示</p>
+    </div>`).join("");
+  $("main").innerHTML = `<h1>🎨 交互示意图画廊（${DIAGRAMS.length} 个）</h1>
+  <div class="pageSub">🐣 生活比喻版 = 没基础也能看懂 · 🔧 技术版 = 带参数调节的深色工程风。均为单文件零依赖。</div>
+  <div class="grid g3">${cards}</div>`;
+}
+
+/* ==================== 视图：面试卡片 ==================== */
+let cardFilter = "全部", cardPos = 0;
+function renderCards(){
+  const mods = [...new Set(CARDS.map(c=>c.m))];
+  $("main").innerHTML = `
+  <h1>🃏 面试卡片（翻转记忆）</h1>
+  <div class="pageSub">点击卡片翻面看要点；"已掌握"进统计。已掌握 ${LS.known().size}/${CARDS.length}</div>
+  <div class="cardtools">
+    <span>分类：</span>
+    ${["全部",...mods].map(m=>`<span class="lnk ${cardFilter===m?"on":""}" onclick="cardFilter='${m}';cardPos=0;renderCards()">${m}</span>`).join(" · ")}
+  </div>
+  <div class="fcard" id="fcard" style="cursor:pointer" onclick="flipCard()"></div>
+  <div class="flipbtns">
+    <button class="b-flip" onclick="flipCard()">🔄 翻面看要点</button>
+    <button class="b-know" onclick="mark(true)">✓ 已掌握</button>
+    <button class="b-again" onclick="mark(false)">✗ 再看看</button>
+    <button class="b-nav" onclick="nextCard(1)">下一张 ▶</button>
+  </div>`;
+  flipCard(); flipped = false;
+}
+function filteredCards(){ return CARDS.filter(c => cardFilter==="全部" || c.m===cardFilter); }
+let flipped = false;
+function flipCard(){
+  flipped = !flipped;
+  const c = filteredCards()[cardPos % filteredCards().length];
+  $("fcard").classList.toggle("back", flipped);
+  if (c) {
+    $("fcard").innerHTML = `
+      <div class="mod-tag">${pill(c.m,"blue")} ${LS.known().has(c.q)?pill("✓ 已掌握","green"):""}</div>
+      <div class="q">${flipped ? "答题要点" : c.q}</div>
+      <div class="a" style="display:${flipped?"block":"none"}">${flipped ? esc(c.a) : "点卡片翻面看答题要点"}</div>
+      <div class="hint">${flipped ? "再点翻回问题" : "点卡片翻面看答题要点 · 已掌握标记见下方按钮"}</div>`;
+  }
+}
+function mark(known){
+  const list = filteredCards();
+  const c = list[cardPos % list.length];
+  if(!c) return;
+  const ks = LS.known(); if(known) ks.add(c.q); else ks.delete(c.q); LS.saveKnown(ks);
+  flipCard(); flipped = false;
+}
+function nextCard(d){ cardPos += d; flipped = false; flipCard(); }
+
+/* ==================== 视图：踩坑 ==================== */
+function renderPits(){
+  $("main").innerHTML = `<h1>🕳️ 踩坑实录（12 个真实坑）</h1>
+  <div class="pageSub">完整版（现象→排查→根因→修复→教训）：<a class="lnk" href="../mq/踩坑实录-完整复盘.md">mq/踩坑实录-完整复盘.md</a></div>` +
+  PITS.map(p=>`<div class="pit"><div class="no">${p.no}</div><div><div class="t">${p.t}</div><div class="d">${p.d}</div></div></div>`).join("");
+}
+
+/* ==================== 视图：清单 ==================== */
+const GROUPS = [["环境与入门",0,3],["mq 教程",3,5],["redis 教程",5,8],["java-core",8,11],["项目与面试",11,15]];
+function renderCheck(){
+  let html = `<h1>✅ 任务清单（总检查）</h1><div class="pageSub">勾选自动保存。全部完成 = 整套教学毕业</div>`;
+  GROUPS.forEach(([name,s,e])=>{
+    html += `<h2 class="sec">${name}</h2>`;
+    for(let i=s;i<e;i++){
+      const done = LS.checks().has(String(i));
+      html += `<div class="chk ${done?"done":""}"><input type="checkbox" ${done?"checked":""} onchange="toggleCheck(${i})"><span>${CHECKS[i]}</span></div>`;
+    }
+  });
+  const doneN = CHECKS.filter((c,i)=>LS.checks().has(String(i))).length;
+  html += `<div class="statline">已完成 ${doneN}/${CHECKS.length}</div>`;
+  $("main").innerHTML = html;
+}
+function toggleCheck(i){
+  const s = LS.checks();
+  if(s.has(String(i))) s.delete(String(i)); else s.add(String(i));
+  LS.saveChecks(s); renderCheck();
+}
+
+/* ==================== 路由 ==================== */
+function go(v){ document.querySelector(`.nav-item[data-v="${v}"]`).click(); }
+const VIEWS = { dash:renderDash, courses:renderCourses, diagrams:renderDiagrams,
+                cards:renderCards, pits:renderPits, check:renderCheck };
+function render(){ VIEWS[view](); }
+document.querySelectorAll(".nav-item").forEach(el => {
+  el.addEventListener("click", () => {
+    document.querySelectorAll(".nav-item").forEach(x => x.classList.remove("on"));
+    el.classList.add("on");
+    view = el.dataset.v;
+    render();
+  });
+});
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>CAS 与 ABA 时序动画 · 并发 04</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 26px; }
+  h1 { color: #7dd3fc; font-size: 21px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 14px; }
+  .modes { margin-bottom: 14px; }
+  .modes span { color: #94a3b8; font-size: 13px; margin-right: 8px; }
+  .modes button { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 8px;
+                  padding: 7px 16px; font-size: 13px; cursor: pointer; margin-right: 6px; }
+  .modes button.on { background: #1e40af; color: #dbeafe; border-color: #3b82f6; }
+  .modes button.on.bad { background: #7f1d1d; color: #fecaca; border-color: #ef4444; }
+  .mem { background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+  .mem h3 { color: #7dd3fc; font-size: 14px; margin-bottom: 12px; }
+  .memrow { display: flex; align-items: center; gap: 14px; }
+  .cell { border: 2px solid #475569; border-radius: 10px; padding: 10px 18px; text-align: center; transition: all .4s; }
+  .cell .lbl { font-size: 11px; color: #64748b; display: block; }
+  .cell .big { font-size: 22px; font-weight: bold; font-family: Consolas, monospace; color: #e2e8f0; }
+  .cell.flash { border-color: #38bdf8; background: #1c3d5a; transform: scale(1.05); }
+  .cell.back { border-color: #fbbf24; background: #78350f; }
+  .cell.ok { border-color: #34d399; background: #14532d; }
+  .cell.na { opacity: .35; }
+  .stampnote { font-size: 12px; color: #94a3b8; }
+  .stampnote b { color: #fcd34d; }
+  .duel { display: flex; gap: 18px; margin-bottom: 14px; }
+  .actor { flex: 1; background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 14px; min-height: 150px; }
+  .actor h3 { font-size: 14px; margin-bottom: 10px; }
+  .actor.t1 h3 { color: #38bdf8; } .actor.t2 h3 { color: #fbbf24; }
+  .step { background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 8px 10px;
+          font-size: 12.5px; color: #94a3b8; margin-bottom: 8px; min-height: 36px; font-family: Consolas, monospace; }
+  .step.hit { border-color: #34d399; color: #86efac; }
+  .step.miss { border-color: #f87171; color: #fca5a5; }
+  .step.run { border-color: #fbbf24; }
+  .step.warn { border-color: #c084fc; color: #d8b4fe; }
+  .verdict { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 12px;
+             font-size: 13px; min-height: 78px; margin-bottom: 14px; color: #94a3b8; }
+  .verdict .ok { color: #34d399; } .verdict .no { color: #f87171; } .verdict .warn { color: #fcd34d; }
+  .btns button { background: #1e40af; color: #dbeafe; border: none; border-radius: 8px; padding: 9px 16px;
+                 font-size: 13px; cursor: pointer; margin: 0 10px 10px 0; }
+  .btns button:hover { background: #3b82f6; }
+  .btns button.reset { background: #7f1d1d; color: #fecaca; }
+  .log { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 10px;
+         font-size: 12.5px; color: #94a3b8; min-height: 56px; }
+  .log div { padding: 2px 0; }
+</style>
+</head>
+<body>
+<h1>CAS 与 ABA 时序动画</h1>
+<div class="sub">Java 并发 04 · CAS 只校验"值"，不校验"历史"——AtomicStampedReference 版本号怎么堵住这个洞</div>
+
+<div class="modes">
+  <span>原子实现方式：</span>
+  <button id="m-plain" class="on" onclick="setMode(false)">❌ 无版本号（AtomicInteger / AtomicReference）</button>
+  <button id="m-stamp" onclick="setMode(true)">✅ 版本号（AtomicStampedReference 值+戳）</button>
+</div>
+
+<div class="mem">
+  <h3>共享内存（ AtomicInteger / AtomicStampedReference 内部状态）</h3>
+  <div class="memrow">
+    <div class="cell" id="cVal"><span class="lbl">值 value</span><span class="big">100</span></div>
+    <div class="cell" id="cStamp"><span class="lbl">版本 stamp</span><span class="big">0</span></div>
+    <div class="stampnote" id="stampNote">CAS 只问一个问题：<b>值 == 预期吗？</b>——不问"这期间发生过什么"</div>
+  </div>
+</div>
+
+<div class="duel">
+  <div class="actor t1">
+    <h3>🔵 线程 1</h3>
+    <div class="step" id="t1a">等待执行…</div>
+    <div class="step" id="t1b">等待执行…</div>
+  </div>
+  <div class="actor t2">
+    <h3>🟡 线程 2（中途插队）</h3>
+    <div class="step" id="t2a">—（本场景未出场）</div>
+    <div class="step" id="t2b">—</div>
+  </div>
+</div>
+
+<div class="verdict" id="verdict">先跑 ① 感受 CAS 的正常节奏，再跑 ② 看 ABA：同一套时序，两种实现结局完全不同。③ 是 ABA 真正咬人的场景（无锁栈）。</div>
+
+<div class="btns">
+  <button onclick="run('plain')">① 普通 CAS：100 → 150</button>
+  <button onclick="run('aba')">② ABA 时序：100→80→100 后 CAS</button>
+  <button onclick="run('stack')">③ 危害实演：无锁栈栈顶回拨</button>
+  <button onclick="run('spin')">④ 自旋观察：竞争激烈的代价</button>
+  <button class="reset" onclick="reset()">↺ 重置</button>
+</div>
+<div class="log" id="logEl"></div>
+
+<script>
+"use strict";
+let stamped = false;   // 是否启用版本号
+let curToken = 0;      // 场景代数：重置/切换后旧定时器自动失效
+const $ = id => document.getElementById(id);
+
+function addLog(t){
+  const d = document.createElement("div");
+  d.innerHTML = t; $("logEl").prepend(d);
+}
+function setCell(id, val, cls){
+  const el = $(id);
+  el.querySelector(".big").textContent = val;
+  el.className = "cell" + (cls ? " " + cls : "");
+}
+function resetMem(){
+  setCell("cVal", "100", "flash");
+  setCell("cStamp", "0", stamped ? "flash" : "na");
+  $("stampNote").innerHTML = stamped
+    ? 'CAS 问两个问题：<b>值 == 预期？且 版本 == 预期？</b>——历史每次被改动，版本 +1，改回去也回不到旧版本号'
+    : 'CAS 只问一个问题：<b>值 == 预期吗？</b>——不问"这期间发生过什么"';
+  ["t1a","t1b","t2a","t2b"].forEach(id => { $(id).textContent = id.startsWith("t2") ? "—（本场景未出场）" : "等待执行…"; $(id).className = "step"; });
+  $("verdict").innerHTML = "先跑 ① 感受 CAS 的正常节奏，再跑 ② 看 ABA：同一套时序，两种实现结局完全不同。③ 是 ABA 真正咬人的场景（无锁栈）。";
+}
+function reset(){ $("logEl").innerHTML = ""; resetMem(); addLog("已重置：值=100" + (stamped ? "，版本=0" : "")); }
+function setMode(v){
+  stamped = v;
+  $("m-stamp").classList.toggle("on", v);
+  $("m-plain").classList.toggle("on", !v);
+  $("m-plain").classList.toggle("bad", !v);
+  $("logEl").innerHTML = ""; resetMem();
+  addLog(v ? "✅ 版本号模式：值和 stamp 必须同时匹配才算'世界没变过'"
+           : "❌ 无版本号模式：只看值——改走再改回来 = 值相同，历史被抹");
+}
+function step(id, txt, cls){
+  const el = $(id);
+  el.innerHTML = txt;
+  el.className = "step" + (cls ? " " + cls : "");
+}
+
+function run(sc){
+  curToken++;
+  const gen = curToken;
+  const at = (ms, fn) => setTimeout(() => { if (gen === curToken) fn(); }, ms);
+  $("logEl").innerHTML = ""; resetMem();
+  if (sc === "plain") return plain(at);
+  if (sc === "aba")   return aba(at);
+  if (sc === "stack") return stack(at);
+  if (sc === "spin")  return spin(at);
+}
+
+/* ① 普通 CAS：两种模式都成功——CAS 本身没问题 */
+function plain(at){
+  step("t1a", "读到 100" + (stamped ? "（stamp=0）" : "") + "，计算新值 150", "run");
+  step("t2a", "—", ""); step("t2b", "—", "");
+  at(600, () => {
+    if (stamped){
+      step("t1b", "CAS(值 100→150, stamp 0→1) → 值✓ 版本✓ → 成功", "hit");
+      setCell("cVal", "150", "ok"); setCell("cStamp", "1", "ok");
+    } else {
+      step("t1b", "CAS(100→150) → 内存值==100 ✓ → 成功", "hit");
+      setCell("cVal", "150", "ok");
+    }
+    $("verdict").innerHTML = '<span class="ok">✅ 无并发干扰时 CAS 又快又干净：一次 CPU 原子指令（lock cmpxchg）完成"判断+更新"，不进内核、不挂起线程。</span>AtomicInteger 的自旋重试就是"读-算-CAS"循环——问题只在②的时序里。';
+    addLog("① 完成：CAS 正常路径——一切如预期");
+  });
+}
+
+/* ② ABA 时序：核心剧本 */
+function aba(at){
+  if (!stamped){
+    step("t1a", "读到 100，准备 CAS(100→150)——此时被调度挂起…", "run");
+    setCell("cVal", "100");
+    at(900, () => {
+      step("t2a", "扣款：100 → 80", "warn");
+      setCell("cVal", "80", "back");
+    });
+    at(1800, () => {
+      step("t2b", "退款到账：80 → 100（值回来了！）", "warn");
+      setCell("cVal", "100", "back");
+    });
+    at(2700, () => {
+      step("t1b", "恢复执行：CAS(100→150) → 内存值==100 ✓ → 成功", "miss");
+      setCell("cVal", "150", "flash");
+      $("verdict").innerHTML =
+        '<span class="no">❌ ABA 发生：CAS 成功了，但"值==100"掩盖了中间的 100→80→100。</span>' +
+        '线程 1 以为"这期间世界纹丝没动"——如果业务语义是「余额没动过才能安心扣款」，中间那笔 20 的扣款就被<b class="warn">整个抹掉了历史</b>。值相同 ≠ 没发生过。';
+      addLog("② ❌ 无版本号：CAS 透过'改走又改回来'成功——历史被抹");
+    });
+  } else {
+    step("t1a", "读到 (值=100, stamp=1)，准备 CAS——挂起…", "run");
+    setCell("cVal", "100"); setCell("cStamp", "1", "flash");
+    at(900, () => {
+      step("t2a", "扣款：100→80，stamp 1→2", "warn");
+      setCell("cVal", "80", "back"); setCell("cStamp", "2", "back");
+    });
+    at(1800, () => {
+      step("t2b", "退款：80→100，stamp 2→3（值回来了，版本回不来）", "warn");
+      setCell("cVal", "100", "back"); setCell("cStamp", "3", "back");
+    });
+    at(2700, () => {
+      step("t1b", "CAS(100→150, 期望 stamp=1) → 值✓ 但版本 3≠1 → <b>失败</b>", "miss");
+      $("verdict").innerHTML =
+        '<span class="warn">✅ 版本号拦住了 ABA：值虽然回到了 100，stamp 已经走到 3——"世界变过"无法再伪装。</span>' +
+        'CAS 失败不是灾难：重读最新状态再试即可（compareAndSet(old, "C", stamp[0], stamp[0]+1)）。';
+      addLog("② ✅ 版本号：值匹配、版本不匹配 → CAS 拒绝，ABA 被拆穿");
+    });
+    at(3600, () => {
+      step("t1b", "重读 (100, stamp=3) → CAS(100→150, 3→4) → 重试成功", "hit");
+      setCell("cVal", "150", "ok"); setCell("cStamp", "4", "ok");
+      $("verdict").innerHTML =
+        '<span class="ok">✅ 重试成功：CAS 的哲学是<b>乐观</b>——失败不阻塞、不自旋等待，读最新值再战一次。</span>' +
+        '这正是 compareAndSet(old, "C", stamp[0], stamp[0]+1) 里 stamp[0] 用引用传出的原因：失败时能拿到最新版本号。';
+      addLog("② ✅ 重读重试：拿到最新 stamp=3，第二次 CAS 成功");
+    });
+  }
+}
+
+/* ③ 无锁栈：ABA 真正咬人的场景 */
+function stack(at){
+  $("verdict").innerHTML = "栈结构：top → A → B → C。线程 1 要把栈顶从 A 换成 B；线程 2 中途 pop 了两个节点又 push 了一个。";
+  addLog("栈初始：top → A → B → C");
+  if (!stamped){
+    step("t1a", "CAS(top: A→B)——准备让 B 当新栈顶，挂起…", "run");
+    at(1000, () => {
+      step("t2a", "pop A → pop B（top 变 C）→ push 新节点（恰好复用 A 的内存，值仍叫 A）", "warn");
+      addLog("线程 2：top 变成 A'（复用旧 A 的地址）→ C");
+    });
+    at(2000, () => {
+      step("t1b", "恢复：CAS(top: A→B) → 地址==A ✓ → 成功", "miss");
+      $("verdict").innerHTML =
+        '<span class="no">❌ 栈坏了：线程 2 期间已 pop 掉 B，A\' 的链也不经过 B——线程 1 却把 top 指回 B。</span>' +
+        '此刻 <b class="warn">top=B，但 B 已不在栈中；线程 2 刚 push 的节点（挂在 A\' 下）整个从栈上脱落丢失</b>。CAS"成功"的那一刻，数据结构损坏。';
+      addLog("③ ❌ 无版本号：top 被拨回已弹出的 B——新节点丢失，链断");
+    });
+  } else {
+    step("t1a", "CAS(top: A→B, stamp 0→1)，挂起…", "run");
+    at(1000, () => {
+      step("t2a", "pop/pop/push 各改一次栈顶：stamp 0 → 3", "warn");
+    });
+    at(2000, () => {
+      step("t1b", "CAS(top: A→B, 期望 stamp=0) → 版本 3≠0 → 失败，重读栈顶重试", "miss");
+      $("verdict").innerHTML =
+        '<span class="ok">✅ 版本号把"栈顶经历过 3 次变动"记在了戳里——线程 1 的旧计划作废，重读后按新栈结构重新 CAS。</span>' +
+        '这就是无锁栈（如 JDK 的 ConcurrentLinkedDeque 内部）必须带版本/计数的原因。';
+      addLog("③ ✅ 版本号：栈顶变过 3 次，旧 CAS 被拒绝——结构安全");
+    });
+  }
+}
+
+/* ④ 自旋观察 */
+function spin(at){
+  $("verdict").innerHTML = "模拟：线程 1 想把 100→101，但后台其他线程持续竞争同一变量（不断改走改回）。";
+  step("t1a", "第 1 轮：读 100 → CAS 失败（值变了）", "miss");
+  setCell("cVal", "104", "back");
+  at(900, () => {
+    step("t1a", "第 2 轮：读 104 → CAS 又失败", "miss");
+    setCell("cVal", "99", "back");
+    addLog("自旋第 2 次失败——重试本身廉价（无内核切换），但空耗 CPU");
+  });
+  at(1800, () => {
+    step("t1a", "第 3 轮：读 99 → CAS 失败", "miss");
+    setCell("cVal", "150", "back");
+    addLog("自旋第 3 次失败……竞争激烈时大量线程在'读-算-CAS'里空转");
+  });
+  at(2700, () => {
+    step("t1b", stamped
+      ? "（版本号模式：同样的自旋循环，只是比较项多了 stamp）"
+      : "第 4 轮：终于成功 → 但此刻 CPU 已空转 3 轮", stamped ? "warn" : "hit");
+    if (!stamped) setCell("cVal", "101", "ok");
+    $("verdict").innerHTML =
+      '<span class="warn">CAS 三代价之二：①ABA（②③已演示）②<b>自旋失败空耗 CPU</b>——竞争激烈时冲突率暴涨。</span>' +
+      '解法：<b class="ok">LongAdder 分段</b>（线程哈希到不同 Cell 各加各的，几乎零冲突）/' +
+      '限制自旋次数/退回 synchronized。③ 单变量限制：多变量联合判断请封装成不可变对象放 AtomicReference 或上锁。';
+    addLog("④ 观察：失败重试不进内核很便宜，但架不住量大——LongAdder 用分段把冲突拆掉");
+  });
+}
+
+addLog("初始化完成。建议顺序：① → 切两种模式各跑一遍 ② → ③ 看危害 → ④ 看代价");
+</script>
+</body>
+</html>

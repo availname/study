@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>fetch 加载 JSON</title>
+</head>
+<body>
+  <h1>fetch 加载 JSON</h1>
+  <button id="load-button" type="button">加载 students.json</button>
+  <p id="status"></p>
+  <ul id="student-list"></ul>
+
+  <script>
+    document.querySelector('#load-button').addEventListener('click', async () => {
+      const status = document.querySelector('#status')
+      const list = document.querySelector('#student-list')
+
+      try {
+        status.textContent = '正在加载...'
+        const response = await fetch('./students.json')
+
+        if (!response.ok) {
+          throw new Error('HTTP 状态：' + response.status)
+        }
+
+        const students = await response.json()
+        list.textContent = ''
+
+        students.forEach((student) => {
+          const item = document.createElement('li')
+          item.textContent = student.name + '：' + student.score + ' 分'
+          list.appendChild(item)
+        })
+
+        status.textContent = '加载完成'
+      } catch (error) {
+        status.textContent = '加载失败：' + error.message
+      }
+    })
+  </script>
+</body>
+</html>

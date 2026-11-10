@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>try...catch 与 throw</title>
+</head>
+<body>
+  <h1>try...catch 与 throw</h1>
+  <input id="score" type="number" value="120" />
+  <button id="check-button" type="button">校验成绩</button>
+  <p id="output"></p>
+
+  <script>
+    document.querySelector('#check-button').addEventListener('click', () => {
+      const output = document.querySelector('#output')
+
+      try {
+        const score = Number(document.querySelector('#score').value)
+
+        if (score < 0 || score > 100) {
+          throw new Error('成绩必须在 0 到 100 之间')
+        }
+
+        output.textContent = '成绩有效：' + score
+      } catch (error) {
+        console.error(error)
+        output.textContent = '发生错误：' + error.message
+      }
+    })
+  </script>
+</body>
+</html>

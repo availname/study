@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>分布式锁 · 公共储物柜比喻（容易看懂版）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #ecfeff; color: #1e293b; padding: 30px; }
+  h1 { color: #0e7490; font-size: 24px; }
+  .sub { color: #0e7490; opacity: .85; font-size: 14px; margin-bottom: 18px; }
+  .users { display: flex; gap: 16px; margin-bottom: 18px; }
+  .user { flex: 1; background: #fff; border-radius: 14px; border: 2px solid #a5f3fc; padding: 16px; text-align: center; }
+  .user.now { border-color: #0891b2; box-shadow: 0 0 16px #06b6d444; }
+  .user .face { font-size: 38px; }
+  .user b { color: #0e7490; display: block; margin: 4px 0; }
+  .user .st { font-size: 13px; color: #64748b; }
+  .user .st.holding { color: #0e7490; font-weight: bold; }
+  .cabinet { background: #164e63; border-radius: 16px; padding: 20px; text-align: center; color: #a5f3fc; }
+  .cabinet .door { font-size: 60px; display: block; transition: all .3s; }
+  .cabinet .door.open { opacity: .35; }
+  .cabinet b { font-size: 18px; color: #67e8f9; }
+  .cabinet .holder { font-size: 14px; margin-top: 6px; }
+  .cabinet .ttl { font-size: 12px; color: #67e8f9; margin-top: 4px; }
+  .ttlbar { height: 10px; background: #083344; border-radius: 6px; overflow: hidden; margin-top: 8px; }
+  .ttlbar div { height: 100%; background: #22d3ee; border-radius: 6px; transition: width .9s linear; }
+  .btns { display: flex; gap: 10px; margin: 18px 0; flex-wrap: wrap; }
+  .btns button { background: #0e7490; color: #cffafe; border: none; border-radius: 10px; padding: 10px 18px;
+                 font-size: 13.5px; cursor: pointer; }
+  .btns button:hover { background: #155e75; }
+  .btns button:disabled { opacity: .4; cursor: not-allowed; }
+  .btns button.a { background: #0891b2; }
+  .btns button.b { background: #7c2d12; color: #fdba74; }
+  .log { background: #020617; border: 1px solid #164e63; border-radius: 12px; padding: 12px;
+         font-size: 13px; min-height: 140px; }
+  .log div { padding: 2px 0; color: #94a3b8; }
+  .log .ok { color: #34d399; font-weight: bold; } .log .er { color: #f87171; }
+  .note { margin-top: 14px; background: #fefce8; border: 2px dashed #fde047; border-radius: 12px;
+          padding: 14px 18px; font-size: 13.5px; color: #713f12; line-height: 1.9; }
+  .note b { color: #a16207; }
+</style>
+</head>
+<body>
+<h1>🔒 分布式锁 = 商场的公共储物柜</h1>
+<div class="sub">Redis stage3/03 / Java 并发 03 · 家里厕所门锁只有家人能开（JVM 锁）——<b>商场的柜子所有顾客都能抢</b>（跨进程）</div>
+
+<div class="users">
+  <div class="user" id="uA"><div class="face">🧑A</div><b>用户 A</b><div class="st" id="stA">空闲</div></div>
+  <div class="user" id="uB"><div class="face">🧑B</div><b>用户 B</b><div class="st" id="stB">空闲</div></div>
+  <div class="user" id="uC"><div class="face">🧑C</div><b>用户 C</b><div class="st" id="stC">空闲</div></div>
+</div>
+
+<div class="cabinet" id="cabinet">
+  <span class="door" id="door">🔒</span>
+  <b>公共储物柜（Redis key: lock:sku1）</b>
+  <div class="holder" id="holder">未上锁</div>
+  <div class="ttl">EX 自动过期倒计时（防持有者跑路死锁）</div>
+  <div class="ttlbar"><div id="ttlbar" style="width:0%"></div></div>
+  <div class="ttl" id="ttltext">—</div>
+</div>
+
+<div class="btns">
+  <button class="a" onclick="tryLock('A')">A 抢锁（SET NX EX 10s）</button>
+  <button class="b" onclick="tryLock('B')">B 抢锁</button>
+  <button class="a" onclick="release('A')">A 释放（校验钥匙）</button>
+  <button class="b" onclick="release('B')">B 释放</button>
+  <button onclick="runaway()">💥 持有者断电跑路（演示 EX 兜底）</button>
+</div>
+
+<div class="log" id="logEl"></div>
+
+<div class="note">
+  💡 <b>三要点回顾</b>：<br>
+  ① 抢锁 = <b>SET NX EX</b> 一条命令原子完成（判断+上锁不能拆两步，否则"锁上了还没设过期"的空档=死锁）<br>
+  ② 释放 = <b>Lua 校验 requestId 再删</b>——只能解自己的锁（防止 A 业务超时锁过期后被 B 抢走、A 回来误删 B 的锁）<br>
+  ③ EX 过期 = <b>防持有者断电死锁</b>；执行超时靠<b>看门狗续期</b>（Redisson）。跨进程的锁才叫分布式锁——家里厕所门锁（JVM 锁）管不了商场柜子<br>
+  ④ 真正的<b>正确性兜底在 DB</b>（WHERE stock>0），Redis 锁只是效率层的闸门
+</div>
+
+<script>
+"use strict";
+let holder = null;           // 当前持锁人（null=未上锁）
+let requestId = null;        // 钥匙编号
+let ttl = 0;                 // 剩余秒
+let timer = null;
+
+function $(id){ return document.getElementById(id); }
+function addLog(t, cls){
+  const d = document.createElement("div");
+  d.innerHTML = new Date().toLocaleTimeString().slice(0,8) + " · " + t;
+  $("logEl").prepend(d);
+}
+function setState(){
+  $("door").textContent = holder ? "🔒" : "🔓";
+  $("holder").textContent = holder ? ("持有者：" + holder + "（钥匙 requestId=" + requestId + "）") : "未上锁";
+  $("ttlbar").style.width = holder ? "100%" : "0%";
+  document.querySelectorAll(".user").forEach((u, i) => {
+    const name = ["A","B","C"][i];
+    u.classList.toggle("now", holder === name);
+    const stEl = document.getElementById("st"+name);
+    stEl.textContent = holder === name ? "持锁中（业务执行中…）" : (holder ? "等锁" : "空闲");
+    stEl.className = "st" + (holder === name ? " holding" : "");
+  });
+}
+function tryLock(who){
+  if (holder) { addLog(`❌ ${who} 抢锁失败——锁被 ${holder} 持有（NX：已存在即失败）`); return; }
+  holder = who; requestId = "uuid-" + who + "-" + Math.random().toString(36).slice(2,6);
+  ttl = 10;
+  $("ttlbar").style.width = "100%";
+  addLog(`✅ ${who} 抢锁成功（SET ${"lock:sku1"} ${requestId} NX EX 10）`, "ok");
+  startTTL();
+}
+function startTTL(){
+  clearInterval(timer);
+  timer = setInterval(() => {
+    ttl--;
+    $("ttlbar").style.width = (ttl / 10 * 100) + "%";
+    $("ttltext").textContent = holder ? `剩余 ${ttl}s（EX 自动过期兜底：持有者断电锁也会开）` : "—";
+    if (ttl <= 0 && holder) {
+      holder = null; requestId = null; ttl = 0;
+      addLog(`⏰ EX 到期 → 锁自动释放（防断电死锁的兜底）`, "ok");
+      setState(); $("ttltext").textContent = "—"; $("ttlbar").style.width = "0%";
+      clearInterval(timer);
+    }
+  }, 1000);
+}
+function release(who){
+  if (holder !== who) { addLog(`❌ ${who} 释放失败——只有持有者能解（Lua 校验 requestId）`, "er"); return; }
+  clearInterval(timer);
+  holder = null; requestId = null; ttl = 0;
+  addLog(`✅ ${who} 释放成功（Lua 校验 requestId 匹配）`, "ok");
+  setState(); $("ttltext").textContent = "—"; $("ttlbar").style.width = "0%";
+}
+function runaway(){
+  if (!holder) { addLog("当前没有持锁者"); return; }
+  addLog(`💥 ${holder} 持锁者断电跑路！→ 10 秒后 EX 到期自动开锁（防死锁兜底）`, "y");
+  const h = holder;
+  const t = setTimeout(() => {
+    if (holder === h) {
+      holder = null; requestId = null; ttl = 0;
+      addLog(`⏰ EX 到期 → 自动开锁（断电兜底生效）`, "ok");
+      setState();
+    }
+  }, 4000);
+  startTTL();
+}
+setState();
+</script>
+</body>
+</html>

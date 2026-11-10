@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>缓存三大问题 · 奶茶店比喻（容易看懂版）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #fffbeb; color: #1e293b; padding: 30px; }
+  h1 { color: #b45309; font-size: 24px; }
+  .sub { color: #92400e; font-size: 14px; margin-bottom: 18px; }
+  .tabs { margin-bottom: 16px; }
+  .tabs button { background: #fef3c7; color: #92400e; border: 2px solid #fcd34d; border-radius: 20px;
+                 padding: 8px 18px; font-size: 14px; cursor: pointer; margin-right: 8px; }
+  .tabs button.on { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+  .shop { position: relative; }
+  .row { display: flex; gap: 14px; margin-bottom: 14px; }
+  .card { flex: 1; background: #fff; border-radius: 14px; padding: 14px; text-align: center;
+          border: 2px solid #fde68a; box-shadow: 0 2px 6px rgba(180,83,9,.08); }
+  .card .icon { font-size: 40px; }
+  .card b { display: block; color: #92400e; margin-top: 4px; }
+  .card small { color: #94a3b8; font-size: 12px; }
+  .card.stress { border-color: #ef4444; background: #fef2f2; }
+  .card.stress b { color: #dc2626; }
+  .pressbar { height: 16px; background: #fee2e2; border-radius: 8px; overflow: hidden; margin-top: 8px; }
+  .pressbar div { height: 100%; background: linear-gradient(90deg,#f59e0b,#ef4444); border-radius: 8px;
+                  transition: width .6s; }
+  .pressnum { font-size: 20px; font-weight: bold; color: #dc2626; }
+  .flowline { text-align: center; color: #92400e; font-size: 15px; margin: 10px 0; min-height: 24px; }
+  .btns { margin: 16px 0; text-align: center; }
+  .btns button { background: #f59e0b; color: #fff; border: none; border-radius: 10px; padding: 11px 22px;
+                 font-size: 15px; cursor: pointer; margin: 0 6px; }
+  .btns button:hover { background: #d97706; }
+  .btns button.ghost { background: #e2e8f0; color: #64748b; }
+  .explain { background: #fff; border: 2px solid #fde68a; border-radius: 14px; padding: 16px 20px;
+             max-width: 900px; margin: 14px auto; font-size: 14.5px; line-height: 1.9; color: #334155;
+             box-shadow: 0 2px 10px rgba(180,83,9,.08); min-height: 80px; }
+  .explain b { color: #b45309; }
+  .explain .good { color: #16a34a; font-weight: bold; }
+  .explain .bad { color: #dc2626; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>☕ 缓存三大问题 = 奶茶店的三个灾难</h1>
+<div class="sub">Redis 教学 stage3/01 · <b>货架</b>=Redis（拿起来就给）· <b>后厨</b>=MySQL（做一杯 30 秒）· 点情景按钮看每个灾难</div>
+
+<div class="tabs">
+  <button class="on" onclick="scene(0)">✅ 正常营业</button>
+  <button onclick="scene(1)">🗡️ 穿透：问不存在的商品</button>
+  <button onclick="scene(2)">💥 击穿：爆款突然卖完</button>
+  <button onclick="scene(3)">🌊 雪崩：整排货架同时过期</button>
+</div>
+
+<div class="shop">
+  <div class="row">
+    <div class="card" id="custCard">
+      <div class="icon">🧍🧍🧍</div><b>顾客们</b><small>发请求的人</small>
+      <div class="pressbar"><div id="custPress" style="width:30%"></div></div>
+    </div>
+    <div class="card" id="shelfCard">
+      <div class="icon">🧃</div><b>前台货架 = Redis</b><small>成品奶茶，1 秒拿走</small>
+      <div id="shelfMsg" style="font-size:13px;color:#16a34a;margin-top:6px">货架空空的（还没开始）</div>
+    </div>
+    <div class="card" id="kitchenCard">
+      <div class="icon">👨‍🍳</div><b>后厨 = MySQL</b><small>做一杯 30 秒</small>
+      <div class="pressbar"><div id="kitchenPress" style="width:0%"></div></div>
+      <div class="pressnum" id="kitchenNum">压力 0</div>
+    </div>
+  </div>
+  <div class="flowline" id="flowline">点击上方情景按钮开始演示</div>
+</div>
+
+<div class="btns">
+  <button onclick="fixTip()">🛠️ 看这一关的解法</button>
+  <button class="ghost" onclick="scene(cur)">↺ 重播本情景</button>
+</div>
+<div class="explain" id="explain"><b>三个灾难一个比喻记住：</b>穿透=问不存在的商品（探子反复敲不存在的门）；击穿=爆款突然卖完（几百人同时涌向后厨）；雪崩=整排货架同时塌了。解法在每关的"看解法"里。</div>
+
+<script>
+"use strict";
+function $(id){ return document.getElementById(id); }
+let cur = 0, timer = null;
+const DEMOS = {
+  0: [ "顾客点单 → 货架上有 → <b>1 秒拿走</b>（后厨零压力）",
+       "顾客点单 → 货架上有 → 1 秒拿走",
+       "后厨在旁边喝茶 😌" ],
+  1: [ "🗡️ 恶意顾客反复问：<b>“有没有故宫门口的奶茶？”</b>（店里根本没有这个商品）",
+       "货架没有 → 只能问后厨 → 后厨：也没有！",
+       "换个人再问 → 又去问后厨 → <b>每次请求都打到后厨</b>（缓存永远不命中）",
+       "后厨压力条飙红——<b>这就是「穿透」</b>" ],
+  2: [ "💥 爆款“限量珍珠奶茶”突然卖完（缓存恰好过期）",
+       "几百个顾客<b>同时</b>问 → 货架没有 → <b>所有人一起涌向后厨</b>，同时做几百杯",
+       "后厨瞬间被打爆——<b>这就是「击穿」</b>" ],
+  3: [ "🌊 货架上一整排奶茶的<b>保质期标签写在同一时刻</b>（TTL 相同）",
+       "同一时刻整排货同时过期 → 全部顾客涌向后厨 → 后厨爆炸",
+       "<b>这就是「雪崩」</b>" ]
+};
+const FIX = {
+  0: `正常营业时：货架挡住了几乎全部请求，后厨毫无压力。<br>
+      <span class="good">你的 Redis 教学与 community 项目里所有的缓存读，用的都是这个标准姿势（Cache Aside）。</span>`,
+  1: `<b>穿透解法</b>：<br>
+      ① <span class="good">贴纸条</span>：查不到也在货架贴一张“本店不做这个”（<b>空值缓存</b>，TTL 2 分钟）——再问直接从货架拒答，后厨零压力<br>
+      ② <span class="good">门口挂清单</span>：<b>布隆过滤器</b>——门口立一块牌子写着“本店只卖这 100 种”，不在这个名单上的直接轰出去，连货架都不看<br>
+      ③ <span class="good">门口查包</span>：网关参数校验，明显捣乱的 ID 直接拒`,
+  2: `<b>击穿解法</b>：<br>
+      ① <span class="good">派一个人去后厨</span>：只有第一个人去后厨做，<b>其他人排队等他做完拿货</b>（<b>互斥锁</b>——Redis setnx 抢重建锁，stage3/01 方案1）<br>
+      ② <span class="good">货架常备款</span>：爆款永不“过期”，只是后台默默更新（<b>逻辑过期</b>）<br>
+      ③ 后台定时刷新热门商品`,
+  3: `<b>雪崩解法</b>：<br>
+      ① <span class="good">保质期错开</span>：TTL 加随机数（基础 30 分钟 + 0~5 分钟随机）——货架不会同时塌<br>
+      ② <span class="good">货架加固</span>：Redis 高可用（哨兵/集群），货架本身别塌<br>
+      ③ <span class="good">后厨限流</span>：后厨口子加限流阀（DB 熔断限流），宁可慢点做也不崩溃`,
+};
+let notes = [];
+
+function scene(n){
+  cur = n;
+  document.querySelectorAll(".tabs button").forEach((b,i)=>b.classList.toggle("on", i===n));
+  notes = DEMOS[n].slice();
+  $("flowline").innerHTML = "";
+  $("kitchenPress").style.width = "0%";
+  $("kitchenNum").textContent = "压力 0";
+  $("shelfCard").classList.remove("stress");
+  $("kitchenCard").classList.remove("stress");
+  $("explain").innerHTML = DEMOS[n][0];
+  $("explain").className = "explain";
+  next();
+}
+function next(){
+  if(!notes.length) return;
+  const t = notes.shift();
+  $("flowline").innerHTML = t;
+  $("explain").innerHTML =
+    `<b>【${["正常营业","穿透","击穿","雪崩"][cur]}】</b>` + t + "<br><br>" +
+    `<b>解法要点（点“看这一关的解法”查看详解）：</b>` +
+    ["货架挡住全部请求（Cache Aside）","空值缓存+布隆过滤器","互斥锁/逻辑过期","TTL 抖动+高可用"][cur];
+  animate();
+}
+function animate(){
+  if(cur === 0){
+    $("custPress").style.width = "30%";
+    $("kitchenPress").style.width = "0%";
+    $("kitchenNum").textContent = "压力 0（后厨喝茶）";
+    $("shelfCard").classList.add("stress");
+    $("shelfCard").style.background = "#ecfdf5";
+  } else if(cur === 1){
+    $("custPress").style.width = "60%";
+    $("kitchenPress").style.width = "100%";
+    $("kitchenNum").innerHTML = '<span style="color:#dc2626">压力 100 🔴</span>';
+    $("kitchenCard").classList.add("stress");
+    $("shelfCard").classList.remove("stress");
+  } else if(cur === 2){
+    $("custPress").style.width = "85%";
+    $("kitchenPress").style.width = "100%";
+    $("kitchenNum").innerHTML = '<span style="color:#dc2626">压力 100 🔴</span>';
+    $("kitchenCard").classList.add("stress");
+  } else {
+    $("custPress").style.width = "100%";
+    $("kitchenPress").style.width = "100%";
+    $("kitchenNum").innerHTML = '<span style="color:#dc2626">压力 100 🔴</span>';
+    $("kitchenCard").classList.add("stress");
+  }
+}
+function fixTip(){
+  $("explain").innerHTML = FIX[cur];
+}
+document.addEventListener("DOMContentLoaded", ()=>scene(0));
+scene(0);
+</script>
+</body>
+</html>

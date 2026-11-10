@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>while 与 do...while 循环</title>
+</head>
+<body>
+  <h1>while 与 do...while 循环</h1>
+  <button id="run-button" type="button">运行循环</button>
+  <pre id="output"></pre>
+
+  <script>
+    document.querySelector('#run-button').addEventListener('click', () => {
+      let count = 1
+      let result = ''
+
+      while (count <= 3) {
+        result += 'while：' + count + '\n'
+        count = count + 1
+      }
+
+      do {
+        result += 'do...while 至少执行一次\n'
+      } while (false)
+
+      document.querySelector('#output').textContent = result
+    })
+  </script>
+</body>
+</html>

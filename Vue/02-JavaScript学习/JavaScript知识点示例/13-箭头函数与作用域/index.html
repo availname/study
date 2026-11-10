@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>箭头函数与作用域</title>
+</head>
+<body>
+  <h1>箭头函数与作用域</h1>
+  <button id="run-button" type="button">运行箭头函数</button>
+  <p id="output"></p>
+
+  <script>
+    const courseName = 'JavaScript'
+    const createMessage = (studentName) => {
+      const lessonName = '箭头函数'
+      return studentName + '正在学习' + courseName + '的' + lessonName
+    }
+
+    document.querySelector('#run-button').addEventListener('click', () => {
+      document.querySelector('#output').textContent = createMessage('小明')
+    })
+  </script>
+</body>
+</html>

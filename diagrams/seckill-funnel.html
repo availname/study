@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>秒杀四层漏斗 · MQ 实战 stage4/01</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 30px; }
+  h1 { color: #7dd3fc; font-size: 22px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 18px; }
+  .controls { margin-bottom: 22px; }
+  .controls label { color: #94a3b8; font-size: 13px; margin-right: 8px; }
+  .controls input { width: 120px; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; padding: 6px; }
+  .controls button { background: #b91c1c; color: #fecaca; border: none; border-radius: 8px; padding: 10px 22px;
+                     font-size: 15px; font-weight: bold; cursor: pointer; margin-left: 16px; }
+  .controls button:hover { background: #dc2626; }
+  .funnel { max-width: 960px; }
+  .layer { margin-bottom: 10px; transition: all .8s; }
+  .bar { height: 64px; border-radius: 12px; display: flex; align-items: center; padding: 0 20px;
+         transition: width 1s cubic-bezier(.4,0,.2,1), opacity .8s; min-width: 220px; }
+  .bar .name { font-size: 16px; font-weight: bold; width: 190px; }
+  .bar .num { font-size: 22px; font-weight: bold; margin-left: auto; }
+  .bar .cut { font-size: 12px; color: #cbd5e1; margin-left: 14px; }
+  .l1 { background: linear-gradient(90deg,#7f1d1d,#dc2626); }
+  .l2 { background: linear-gradient(90deg,#78350f,#f59e0b); }
+  .l3 { background: linear-gradient(90deg,#164e63,#06b6d4); }
+  .l4 { background: linear-gradient(90deg,#14532d,#22c55e); }
+  .arrow { text-align: center; color: #475569; font-size: 18px; margin: 2px 0; }
+  .dbline { margin-top: 16px; border: 1px solid #14532d; background: rgba(20,83,45,.25);
+            border-radius: 10px; padding: 14px; font-size: 14px; line-height: 1.8; }
+  .dbline b { color: #4ade80; }
+  .k { color: #94a3b8; }
+</style>
+</head>
+<body>
+<h1>秒杀系统四层漏斗</h1>
+<div class="sub">MQ 实战 stage4/01 · MQ 的角色 = 第④层：把瞬时洪峰变成 DB 可承受的匀速流量</div>
+
+<div class="controls">
+  <label>参与用户数：</label><input id="users" value="100000">
+  <label style="margin-left:20px">库存：</label><input id="stock" value="1000">
+  <button onclick="run()">⚡ 开始秒杀</button>
+  <button style="background:#334155;color:#cbd5e1" onclick="init()">↺ 重置</button>
+</div>
+
+<div class="funnel">
+  <div class="layer"><div class="bar l1" style="width:100%" id="b1">
+    <span class="name">① 前端层：按钮置灰/验证码</span><span class="cut" id="c1"></span><span class="num" id="n1">—</span></div></div>
+  <div class="arrow">▼</div>
+  <div class="layer"><div class="bar l2" style="width:88%" id="b2">
+    <span class="name">② 网关限流 Sentinel</span><span class="cut" id="c2"></span><span class="num" id="n2">—</span></div></div>
+  <div class="arrow">▼</div>
+  <div class="layer"><div class="bar l3" style="width:76%" id="b3">
+    <span class="name">③ Redis Lua 预扣库存</span><span class="cut" id="c3"></span><span class="num" id="n3">—</span></div></div>
+  <div class="arrow">▼（抢到资格的请求进 MQ 队列——匀速放行）</div>
+  <div class="layer"><div class="bar l4" style="width:64%" id="b4">
+    <span class="name">④ MQ 异步 → DB 建单（匀速）</span><span class="cut" id="c4"></span><span class="num" id="n4">—</span></div></div>
+  <div class="dbline" id="dbline">
+    <b>DB 压力</b>：<span class="k">无论多少用户冲进来，DB 每秒只承受</span> <b id="rate">—</b> <span class="k">个写请求</span>——
+    <span class="k">这就是 MQ 削峰的意义。</span><br>
+    <b>防超卖双保险</b>：<span class="k">Redis Lua 挡 99%（效率层）+ DB </span><b>WHERE stock &gt; 0</b><span class="k"> 兜底 100%（正确层）</span>
+  </div>
+</div>
+
+<script>
+"use strict";
+const LAYERS = [
+  { name:"① 前端层",   cut:"按钮置灰/验证码/答题 → 挡掉约 30%（机器流量+手速慢的）", factor:0.70 },
+  { name:"② 网关层",   cut:"Sentinel 限流 2w QPS → 超出直接拒绝",                  factor:0.28 },
+  { name:"③ Redis 层", cut:"Lua 原子预扣：库存没了直接拒绝",                        factor:null }
+];
+function $(id){ return document.getElementById(id); }
+function fmt(n){ return n.toLocaleString(); }
+
+function init(){
+  const users = parseInt($("users").value)||100000;
+  const stock = parseInt($("stock").value)||1000;
+  window._users = users; window._stock = stock;
+  for(let i=1;i<=4;i++){
+    $("b"+i).style.width = (100 - (i-1)*12) + "%";
+    $("n"+i).textContent = "—";
+    $("c"+i).textContent = "";
+  }
+  $("rate").textContent = "—";
+  addNote(`参与用户 ${fmt(users)}，库存 ${fmt(stock)}。点击"开始秒杀"看四层漏斗逐层过滤`);
+}
+function run(){
+  const users = window._users, stock = window._stock;
+  // ① 前端层
+  let after1 = Math.floor(users * 0.70);
+  setLayer(1, users, after1, LAYERS[0].cut);
+  // ② 网关层
+  let after2 = Math.min(after1, 20000);
+  setLayer(2, after1, after2, "限流阈值 2w QPS，超出拒绝");
+  // ③ Redis 层：库存决定通过数
+  let after3 = Math.min(after2, stock);
+  setLayer(3, after2, after3, `Lua 原子预扣：库存 ${fmt(stock)}，抢完即拒（一人一单已含）`);
+  // ④ MQ 层：全部成功进入队列，匀速落库
+  setLayer(4, after3, after3, "进队列匀速消费");
+  const rate = Math.min(3000, after3);
+  $("rate").textContent = "≤ " + fmt(rate) + " /秒";
+}
+function setLayer(idx, before, after, cutText){
+  $("n"+idx).textContent = fmt(after);
+  $("c"+idx).textContent = "← 上层 " + fmt(before) + "，" + cutText;
+  const w = Math.max(30, 100 * after / window._users);
+  $("b"+idx).style.width = w + "%";
+}
+function addNote(t){ /* 预留 */ }
+init();
+</script>
+</body>
+</html>

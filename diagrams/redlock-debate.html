@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>RedLock 论战与 Fencing Token · redis stage3/05</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 26px; }
+  h1 { color: #7dd3fc; font-size: 21px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 14px; }
+  .btns button { background: #1e40af; color: #dbeafe; border: none; border-radius: 8px; padding: 9px 16px;
+                 font-size: 13px; cursor: pointer; margin: 0 10px 12px 0; }
+  .btns button:hover { background: #3b82f6; }
+  .btns button.reset { background: #7f1d1d; color: #fecaca; }
+  .btns button.debate { background: #312e81; color: #c7d2fe; }
+  .arena { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .actor { flex: 1; min-width: 200px; background: #1e293b; border: 2px solid #334155; border-radius: 12px;
+           padding: 12px; transition: border-color .4s, background .4s; }
+  .actor h3 { font-size: 13px; margin-bottom: 10px; color: #94a3b8; }
+  .actor.a h3 { color: #38bdf8; } .actor.lock h3 { color: #fbbf24; }
+  .actor.b h3 { color: #f472b6; } .actor.store h3 { color: #34d399; }
+  .actor.dim { opacity: .45; }
+  .step { background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 8px 10px;
+          font-size: 12px; color: #94a3b8; margin-bottom: 8px; min-height: 38px; font-family: Consolas, monospace; }
+  .step.hit { border-color: #34d399; color: #86efac; }
+  .step.miss { border-color: #f87171; color: #fca5a5; }
+  .step.run { border-color: #fbbf24; }
+  .step.warn { border-color: #c084fc; color: #d8b4fe; }
+  .debate { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
+  .side { flex: 1; min-width: 280px; background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 14px; }
+  .side h3 { font-size: 14px; margin-bottom: 8px; }
+  .side.martin { border-color: #ef4444aa; } .side.martin h3 { color: #fca5a5; }
+  .side.antirez { border-color: #fbbf24aa; } .side.antirez h3 { color: #fcd34d; }
+  .side p { font-size: 12.5px; color: #94a3b8; line-height: 1.55; margin-bottom: 6px; }
+  .side p b { color: #cbd5e1; }
+  .verdict { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 12px;
+             font-size: 13px; min-height: 80px; margin-bottom: 14px; color: #94a3b8; }
+  .verdict .ok { color: #34d399; } .verdict .no { color: #f87171; } .verdict .warn { color: #fcd34d; }
+  .log { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 10px;
+         font-size: 12.5px; color: #94a3b8; min-height: 56px; }
+  .log div { padding: 2px 0; }
+</style>
+</head>
+<body>
+<h1>RedLock 论战与 Fencing Token 动画</h1>
+<div class="sub">redis stage3/05 · Martin Kleppmann vs antirez（2016）——锁的"正确性"到底该谁来保证</div>
+
+<div class="btns">
+  <button onclick="run('migrate')">① 动机：主从切换丢锁</button>
+  <button onclick="run('redlock')">② RedLock 怎么抢</button>
+  <button class="debate" onclick="run('gc')">③ Martin 重拳一：GC 停顿</button>
+  <button class="debate" onclick="run('clock')">④ Martin 重拳二：时钟跳变</button>
+  <button class="debate" onclick="run('fencing')">⑤ Fencing Token 正解</button>
+  <button class="reset" onclick="reset()">↺ 重置</button>
+</div>
+
+<div class="arena">
+  <div class="actor a" id="colA"><h3>🔵 客户端 A</h3>
+    <div class="step" id="a1">等待执行…</div><div class="step" id="a2">等待执行…</div></div>
+  <div class="actor lock" id="colLock"><h3>🟡 锁服务（Redis）</h3>
+    <div class="step" id="l1">—（本场景未出场）</div><div class="step" id="l2">—</div></div>
+  <div class="actor b" id="colB"><h3>🩷 客户端 B</h3>
+    <div class="step" id="b1">—（本场景未出场）</div><div class="step" id="b2">—</div></div>
+  <div class="actor store" id="colStore"><h3>🟢 存储层（最终裁决者）</h3>
+    <div class="step" id="s1">—（本场景未出场）</div><div class="step" id="s2">—</div></div>
+</div>
+
+<div class="debate">
+  <div class="side martin" id="sideMartin">
+    <h3>Martin Kleppmann（DDIA 作者）</h3>
+    <p>立场：<b>RedLock 既不够安全也不必要</b>。GC 停顿/进程暂停对任何锁服务都成立，时钟跳变更是 RedLock 独有的根基缺口——"锁的安全性不能建立在运维纪律上"。</p>
+    <p>正解：<b>Fencing Token</b>——锁只发"单调递增凭证"，正确性由<b>存储层拒收旧凭证</b>保证。</p>
+  </div>
+  <div class="side antirez" id="sideAntirez">
+    <h3>antirez（Redis 作者）</h3>
+    <p>立场：GC 停顿是<b>所有</b>锁方案的共同敌人（单机锁也一样）；RedLock 配合 CLOCK_MONOTONIC 与时钟纪律<b>可用</b>；"绝对安全"不存在，工程是权衡。</p>
+    <p>结局：双方都有道理——Redisson 已废弃 RedLock，<b>生产几乎没人用它</b>。</p>
+  </div>
+</div>
+
+<div class="verdict" id="verdict">按 ①→⑤ 跑一遍：①为什么发明 RedLock → ②它怎么工作 → ③④两记重拳 → ⑤ Martin 给的正解。看完你会发现：⑤的思路你早就用过——乐观锁的 version、状态机的 WHERE status=10，全是 fencing token。</div>
+<div class="log" id="logEl"></div>
+
+<script>
+"use strict";
+let curToken = 0;
+const $ = id => document.getElementById(id);
+
+function addLog(t){
+  const d = document.createElement("div");
+  d.innerHTML = t; $("logEl").prepend(d);
+}
+function dim(lock, store){
+  $("colLock").classList.toggle("dim", lock);
+  $("colStore").classList.toggle("dim", store);
+}
+function step(id, txt, cls){
+  const el = $(id);
+  el.innerHTML = txt;
+  el.className = "step" + (cls ? " " + cls : "");
+}
+function reset(){
+  $("logEl").innerHTML = "";
+  ["a1","a2","l1","l2","b1","b2","s1","s2"].forEach(id => { $(id).textContent = id.endsWith("1") ? "等待执行…" : "—"; $(id).className = "step"; });
+  $("colA").classList.remove("dim"); $("colB").classList.remove("dim");
+  $("colLock").classList.remove("dim"); $("colStore").classList.remove("dim");
+  $("verdict").innerHTML = "按 ①→⑤ 跑一遍：①为什么发明 RedLock → ②它怎么工作 → ③④两记重拳 → ⑤ Martin 给的正解。看完你会发现：⑤的思路你早就用过——乐观锁的 version、状态机的 WHERE status=10，全是 fencing token。";
+  addLog("已重置");
+}
+function run(sc){
+  curToken++;
+  const gen = curToken;
+  const at = (ms, fn) => setTimeout(() => { if (gen === curToken) fn(); }, ms);
+  $("logEl").innerHTML = "";
+  ["a1","a2","l1","l2","b1","b2","s1","s2"].forEach(id => { $(id).textContent = id.endsWith("1") ? "等待执行…" : "—"; $(id).className = "step"; });
+  ["colA","colB","colLock","colStore"].forEach(id => $(id).classList.remove("dim"));
+  R[sc](at);
+}
+
+const R = {
+
+  /* ① 动机：单实例 Redis 锁的主从切换弱点 */
+  migrate(at){
+    dim(false, true);
+    step("a1", "SET lock:user1 NX EX 10 → 主库成功 ✅", "hit");
+    at(800, () => {
+      step("l1", "主库宕机！锁 key 还没异步复制到从库…", "miss");
+      $("colA").classList.add("dim");
+      addLog("① A 在主库持锁中——主库带着锁一起没了");
+    });
+    at(1600, () => {
+      step("l2", "哨兵提升从库为新主（没有那条锁 key）", "warn");
+    });
+    at(2400, () => {
+      step("b1", "SET lock:user1 NX EX 10 → 新主成功 ✅", "hit");
+      $("colB").classList.remove("dim");
+      $("colA").classList.remove("dim");
+      step("a2", "A 仍以为自己持锁，继续干活", "warn");
+      step("b2", "B 也拿到了锁，同时干活", "warn");
+      $("verdict").innerHTML =
+        '<span class="no">❌ 双持锁：互斥性破灭。</span>这就是 Redis 锁的固有弱点——<b class="warn">主从异步复制</b>。antirez 的补丁就是 RedLock：不用主从，改向 N 个完全独立的 master 过半抢锁（Quorum 思想）——但请看 ③④。';
+      addLog("① 结论：A、B 双持锁 → RedLock 被发明出来补这个洞");
+    });
+  },
+
+  /* ② RedLock 的抢锁流程 */
+  redlock(at){
+    dim(false, true);
+    step("l1", "5 个完全独立的 Redis master（互不复制）", "run");
+    at(700, () => {
+      step("a1", "依次向 5 个实例 SET NX，记下耗时 t；拿到 ≥3 个 且 t < TTL → 成功", "hit");
+      addLog("② A 拿到 3/5 → 多数派成立，认定持锁");
+    });
+    at(1400, () => {
+      step("l2", "锁有效期 = TTL − 抢锁耗时（要扣掉过程开销）", "warn");
+    });
+    at(2100, () => {
+      step("a2", "持锁干活——任一实例挂掉都不影响多数派", "hit");
+      $("verdict").innerHTML =
+        '<span class="ok">✅ RedLock 的工作方式：5 个独立 master 过半成功才算持锁（Quorum，Raft 同款思想）。</span>' +
+        '<span class="warn">但注意它隐含的两个前提：①有效期计算依赖"时钟基本准确"；②过半共识只锁住"锁的存在"，锁不住"持锁人的进程暂停"——③④就是冲着这两点来的。</span>';
+      addLog("② 结论：多数派抢锁成立——看起来很美，两记重拳在后面");
+    });
+  },
+
+  /* ③ Martin 重拳一：GC 停顿 */
+  gc(at){
+    dim(false, false);
+    step("a1", "拿到锁（RedLock 或单实例都一样）→ 准备写存储", "hit");
+    at(800, () => {
+      step("a2", "GC 停顿 10 秒（STW，全宇宙拦不住）……", "warn");
+      $("colA").classList.add("dim");
+      addLog("③ A 被冻结——锁还在倒计时，人已经失去意识");
+    });
+    at(1600, () => {
+      step("l1", "锁 TTL 到期 → 自动过期释放", "warn");
+    });
+    at(2400, () => {
+      step("b1", "B 合法拿到锁 → 写存储 ✅", "hit");
+    });
+    at(3200, () => {
+      step("b2", "B 写入：订单状态已更新（max 记录无 ← 传统模式）", "hit");
+    });
+    at(4000, () => {
+      $("colA").classList.remove("dim");
+      step("a2", "GC 结束，A 浑然不觉，继续写存储 ✅", "miss");
+      step("s1", "两次写入都被接受 ❌（存储不知道谁更新）", "miss");
+      $("verdict").innerHTML =
+        '<span class="no">❌ 双持锁事故照常发生——过半共识对此<b>毫无办法</b>：锁的存在与否根本管不到"持锁人被冻结"这件事。</span>' +
+        '这不是 Redis 独有：单机锁在 GC 后同样"锁没了人还活着"。Martin 的结论：正确的防线在<b class="ok">存储层</b>——看 ⑤ fencing token。';
+      addLog("③ 结论：A、B 双写存储——RedLock 的多数派白拿了");
+    });
+  },
+
+  /* ④ Martin 重拳二：时钟跳变 */
+  clock(at){
+    dim(false, true);
+    step("a1", "已拿到 3/5 实例的锁（多数派成立）", "hit");
+    at(800, () => {
+      step("l1", "实例 1 的 NTP 校时：时钟向前跳 30 秒", "warn");
+      addLog("④ 实例 1 的锁 key 在它自己的时钟里瞬间'过期'了");
+    });
+    at(1600, () => {
+      step("l2", "实例 1 上的锁提前失效 → B 抢走实例 1", "miss");
+    });
+    at(2400, () => {
+      step("b1", "B 拿到 3/5（实例 1/2/3）→ 多数派也成立 ✅", "miss");
+      step("a2", "A 的多数派还剩 2/5——但 A 不知道，继续干活", "warn");
+      step("b2", "双持锁 ❌（多数派被时钟绕过）", "miss");
+      $("verdict").innerHTML =
+        '<span class="no">❌ 多数派被时钟跳变绕过：RedLock 的"有效期 = TTL − 耗时"依赖各实例时钟基本准确。</span>' +
+        'antirez 回应：用 CLOCK_MONOTONIC + 运维保证不跳变；Martin 反驳：<b class="warn">安全性不能建立在运维纪律上</b>。这场论战没有裁判——工程界用脚投票：Redisson 已废弃 RedLock。';
+      addLog("④ 结论：A、B 双持锁——时钟是 RedLock 拆不掉的前提");
+    });
+  },
+
+  /* ⑤ Fencing Token 正解 */
+  fencing(at){
+    dim(false, false);
+    step("a1", "拿锁：锁服务返回 fencing token <b>#33</b>（单调递增）", "hit");
+    at(900, () => {
+      step("a2", "GC 停顿 10 秒……（③的灾难重演）", "warn");
+      $("colA").classList.add("dim");
+    });
+    at(1800, () => {
+      step("l1", "锁过期 → B 拿锁，拿到 token <b>#34</b>", "warn");
+    });
+    at(2700, () => {
+      step("b1", "B 带 #34 写存储 → 存储：34 > 已见最大 33，接受 ✅，记下 max=34", "hit");
+      step("s1", "存储记住见过的最大 token：34", "hit");
+      $("colB").classList.remove("dim");
+    });
+    at(3600, () => {
+      $("colA").classList.remove("dim");
+      step("a2", "A 醒来带 #33 写存储 → 33 < 34 → <b>拒收</b> ❌", "miss");
+      step("s2", "拒收旧凭证：只有 B 的写入生效", "hit");
+      $("verdict").innerHTML =
+        '<span class="ok">✅ 正确性下沉到存储层：锁可以不可靠，<b>写入必须可验证新旧</b>。</span>' +
+        '你早就用过 fencing token：<b class="warn">乐观锁 version（WHERE version=?）、状态机 CAS（WHERE status=10）、DB 兜底 WHERE stock&gt;0</b>——全是"单调凭证+存储层拒旧"。锁的作用退化为挡掉 99% 无效竞争，省资源而已。';
+      addLog("⑤ 结论：正确性=存储层 CAS；跨服务协调另配 ZooKeeper/etcd——RedLock 退场");
+    });
+  }
+};
+
+addLog("初始化完成。建议顺序：① → ② → ③ → ④ → ⑤，边跑边看两位辩手的立场变化");
+</script>
+</body>
+</html>

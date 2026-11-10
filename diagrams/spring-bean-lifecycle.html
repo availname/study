@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>Spring Bean 生命周期与循环依赖 · Spring 核心 01</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 26px; }
+  h1 { color: #7dd3fc; font-size: 21px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 14px; }
+  .scenes button { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 8px;
+                   padding: 7px 12px; font-size: 12.5px; cursor: pointer; margin: 0 6px 10px 0; }
+  .scenes button.on { background: #1e40af; color: #dbeafe; border-color: #3b82f6; }
+  .ctrl { margin-bottom: 14px; }
+  .ctrl button { background: #166534; color: #dcfce7; border: none; border-radius: 8px; padding: 8px 18px;
+                 font-size: 13px; cursor: pointer; margin-right: 8px; }
+  .ctrl button:disabled { opacity: .35; }
+  .stage { display: flex; gap: 16px; }
+  .lifecycle { flex: 1.2; }
+  .step { border-left: 3px solid #334155; padding: 7px 12px; margin: 4px 0; color: #64748b;
+          font-size: 13px; background: #1e293b66; border-radius: 0 8px 8px 0; transition: all .3s; }
+  .step.done { color: #cbd5e1; }
+  .step.now { border-color: #22d3ee; color: #67e8f9; background: #164e6388;
+              box-shadow: -3px 0 0 0 #22d3ee; transform: translateX(6px); }
+  .step.warn { border-color: #f87171; color: #fca5a5; background: #450a0a44; }
+  .caches { flex: 1; }
+  .cachebox { background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+  .cachebox.hl1 { border-color: #22d3ee; box-shadow: 0 0 14px #22d3ee44; }
+  .cachebox.hl2 { border-color: #fbbf24; box-shadow: 0 0 14px #fbbf2444; }
+  .cachebox.hl3 { border-color: #a78bfa; box-shadow: 0 0 14px #a78bfa44; }
+  .cachebox h3 { font-size: 13px; color: #94a3b8; }
+  .cachebox p { font-size: 11.5px; color: #64748b; margin-top: 4px; }
+  .bean { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px;
+          font-weight: bold; margin: 3px; }
+  .bean.a { background: #22d3ee33; color: #67e8f9; }
+  .bean.b { background: #a78bfa33; color: #c4b5fd; }
+  .bean.proxy { background: #fbbf2433; color: #fcd34d; }
+  .log { margin-top: 14px; background: #020617; border: 1px solid #1e293b; border-radius: 10px;
+         padding: 10px; font-size: 12.5px; height: 150px; overflow-y: auto; }
+  .log div { color: #94a3b8; padding: 2px 0; }
+  .log b { color: #fbbf24; } .log .c { color: #22d3ee; } .log .v { color: #a78bfa; }
+</style>
+</head>
+<body>
+<h1>Spring Bean 生命周期 &amp; 三级缓存循环依赖</h1>
+<div class="sub">Spring 核心 01 · 两个演示：①Bean 十一步生命周期 ②A↔B 循环依赖的三级缓存流转</div>
+
+<div class="scenes">
+  <button id="t0" class="on" onclick="load(0)">演示① Bean 生命周期十一步</button>
+  <button id="t1" onclick="load(1)">演示② 循环依赖的三级缓存</button>
+</div>
+
+<div class="ctrl">
+  <button id="next" onclick="nextStep()">下一步 ▶</button>
+  <button onclick="autoPlay()">▶ 自动播放</button>
+  <button onclick="load(cur)" style="background:#334155;color:#cbd5e1">↺ 重来</button>
+</div>
+
+<div class="stage">
+  <div class="lifecycle" id="stepsBox"></div>
+  <div class="caches">
+    <div class="cachebox" id="c3"><h3>三级缓存 singletonFactories</h3><p>工厂：能产出早期引用（含 AOP 判断）</p><div id="l3"></div></div>
+    <div class="cachebox" id="c2"><h3>二级缓存 earlySingletonObjects</h3><p>半成品/早期引用（未注入完）</p><div id="l2"></div></div>
+    <div class="cachebox" id="c1"><h3>一级缓存 singletonObjects</h3><p>成品（完全初始化）</p><div id="l1"></div></div>
+  </div>
+</div>
+
+<div class="log" id="logEl"></div>
+
+<script>
+"use strict";
+let cur = 0, steps = [], idx = -1, cacheState = { l1: [], l2: [], l3: [] };
+
+const LIFE = [
+  { t:"① 实例化：调用构造方法（属性还是空）", bean:"a" },
+  { t:"② 属性注入：@Autowired / @Value 赋值", bean:"a" },
+  { t:"③ Aware 回调：BeanNameAware / ApplicationContextAware", bean:"a" },
+  { t:"④ BeanPostProcessor#postProcessBeforeInitialization", bean:"a" },
+  { t:"⑤ 初始化：@PostConstruct → afterPropertiesSet → init-method", bean:"a" },
+  { t:"⑥ BeanPostProcessor#postProcessAfterInitialization —— ⭐ AOP 代理在这里生成！返回代理替换原 Bean", bean:"a", warn:true },
+  { t:"⑦ 使用（singleton 常驻容器，直到容器关闭）", bean:"a" },
+  { t:"⑧ 销毁：@PreDestroy → destroy-method", bean:"a" }
+];
+
+const CYCLE = [
+  { t:"① 实例化 A（构造完成）→ A 的工厂放入【三级缓存】", hl:["c3"], cache:{ l3:["A工厂"] } },
+  { t:"② A 属性注入：发现依赖 B → 触发创建 B", hl:["c3"], cache:{ l3:["A工厂"] } },
+  { t:"③ 实例化 B → B 的工厂也放入【三级缓存】", hl:["c3"], cache:{ l3:["A工厂","B工厂"] } },
+  { t:"④ B 属性注入：需要 A → 从【三级缓存】取 A 的工厂 → 得到 A 的早期引用", hl:["c3","c2"],
+    cache:{ l2:["A(早期引用)"] } },
+  { t:"⑤ B 完成注入 → B 成品进入【一级缓存】", hl:["c1"], cache:{ l1:["B成品"], l2:[], l3:["A工厂"] } },
+  { t:"⑥ A 拿到 B → 注入完成 → A 成品进入【一级缓存】", hl:["c1"], cache:{ l1:["A成品","B成品"] } },
+  { t:"✅ 循环依赖解开。为什么要三级不是两级？三级缓存的工厂延迟决定'是否提前生成 AOP 代理'——只有真被循环依赖时才提前代理，不破坏'代理后置生成'的设计", hl:["c1"],
+    cache:{ l1:["A成品(可能被替换成代理)","B成品"] } },
+  { t:"❌ 反例：构造器注入的循环依赖无解——实例化都没完成，无法暴露早期引用 → BeanCurrentlyInCreationException（用 @Lazy 解决）", hl:["c3"], warn:true,
+    cache:{ l3:["(构造器依赖无法提前暴露)"] } }
+];
+
+function $(id){ return document.getElementById(id); }
+
+function load(n){
+  cur = n;
+  [0,1].forEach(i => $("t"+i).classList.toggle("on", i===n));
+  steps = (n === 0) ? LIFE : CYCLE;
+  idx = -1;
+  cacheState = { l1: [], l2: [], l3: [] };
+  renderSteps(); renderCaches();
+}
+function nextStep(){
+  idx++;
+  if(idx >= steps.length){
+    $("next").disabled = true;
+    return false;
+  }
+  $("next").disabled = false;
+  const s = steps[idx];
+  cacheState = Object.assign(cacheState, s.cache || {});
+  renderSteps(); renderCaches();
+  addLog(s.t, s.warn);
+  return true;
+}
+function autoPlay(){ $("auto") && ($("auto").disabled=true); const t=setInterval(()=>{ if(!nextStep()) clearInterval(t); }, 1500); }
+function renderSteps(){
+  const box = $("stepsBox");
+  box.innerHTML = steps.map((s,i)=>{
+    const cls = i === idx ? "step now" + (s.warn ? " warn" : "") : (i < idx ? "step done" : "step");
+    return `<div class="${cls}">${i+1}. ${s.t}</div>`;
+  }).join("");
+}
+function renderCaches(){
+  const tags = arr => arr.map(x=>`<span class="bean ${x.includes("A")?"a":(x.includes("B")?"b":"proxy")}">${x}</span>`).join("");
+  $("c1").classList.toggle("hl1", idx!== -1 && (steps[idx].hl||[]).includes("c1"));
+  $("c2").classList.toggle("hl2", idx!== -1 && (steps[idx].hl||[]).includes("c2"));
+  $("c3").classList.toggle("hl3", idx!== -1 && (steps[idx].hl||[]).includes("c3"));
+  $("l1").innerHTML = tags(cacheState.l1);
+  $("l2").innerHTML = tags(cacheState.l2);
+  $("l3").innerHTML = tags(cacheState.l3);
+}
+function addLog(t, warn){
+  const el = document.createElement("div");
+  if (warn) el.style.color = "#fca5a5";
+  el.innerHTML = `第 ${idx+1}/${steps.length} 步 · ` + t;
+  $("logEl").prepend(el);
+}
+load(0);
+</script>
+</body>
+</html>

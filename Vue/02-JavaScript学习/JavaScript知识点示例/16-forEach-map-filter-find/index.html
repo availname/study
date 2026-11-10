@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>forEach、map、filter、find</title>
+</head>
+<body>
+  <h1>forEach、map、filter、find</h1>
+  <button id="run-button" type="button">处理成绩</button>
+  <pre id="output"></pre>
+
+  <script>
+    const scores = [55, 70, 92]
+
+    document.querySelector('#run-button').addEventListener('click', () => {
+      const lines = []
+      scores.forEach((score) => lines.push('forEach：' + score))
+
+      const addedScores = scores.map((score) => score + 5)
+      const passedScores = scores.filter((score) => score >= 60)
+      const excellentScore = scores.find((score) => score >= 90)
+
+      lines.push('map：' + addedScores.join('、'))
+      lines.push('filter：' + passedScores.join('、'))
+      lines.push('find：' + excellentScore)
+      document.querySelector('#output').textContent = lines.join('\n')
+    })
+  </script>
+</body>
+</html>

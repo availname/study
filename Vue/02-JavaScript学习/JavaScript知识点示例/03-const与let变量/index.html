@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>const 与 let 变量</title>
+</head>
+<body>
+  <h1>const 与 let 变量</h1>
+  <button id="study-button" type="button">学习一次</button>
+  <p id="output"></p>
+
+</body>
+</html>
+
+<script>
+  const courseName = 'JavaScript'
+  let studyCount = 0
+  const output = document.querySelector('#output')
+
+  document.querySelector('#study-button').addEventListener('click', () => {
+    studyCount = studyCount + 1
+    output.textContent = courseName + ' 已学习 ' + studyCount + ' 次'
+  })
+</script>

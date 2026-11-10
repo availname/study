@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>数组下标与 length</title>
+</head>
+<body>
+  <h1>数组下标与 length</h1>
+  <button id="show-button" type="button">读取数组</button>
+  <p id="output"></p>
+
+  <script>
+    const fruits = ['苹果', '香蕉', '橙子']
+
+    document.querySelector('#show-button').addEventListener('click', () => {
+      document.querySelector('#output').textContent =
+        '第一个：' + fruits[0] + '；数组长度：' + fruits.length
+    })
+  </script>
+</body>
+</html>

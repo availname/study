@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>querySelectorAll 与 NodeList</title>
+</head>
+<body>
+  <h1>querySelectorAll 与 NodeList</h1>
+  <p class="student">小明</p>
+  <p class="student">小红</p>
+  <p class="student">小刚</p>
+  <button id="read-button" type="button">读取 NodeList</button>
+  <button id="change-button" type="button">修改所有学生</button>
+  <pre id="output"></pre>
+
+  <script>
+    const output = document.querySelector('#output')
+
+    document.querySelector('#read-button').addEventListener('click', () => {
+      const students = document.querySelectorAll('.student')
+
+      output.textContent = [
+        'NodeList 中的元素数量：' + students.length,
+        'students[0] 的文字：' + students[0].textContent,
+        'students[1] 的文字：' + students[1].textContent
+      ].join('\n')
+    })
+
+    document.querySelector('#change-button').addEventListener('click', () => {
+      const students = document.querySelectorAll('.student')
+
+      students.forEach((student, index) => {
+        student.textContent = '第 ' + (index + 1) + ' 个学生已经被修改'
+      })
+
+      output.textContent = 'forEach() 已经处理了 ' + students.length + ' 个元素。'
+    })
+  </script>
+</body>
+</html>

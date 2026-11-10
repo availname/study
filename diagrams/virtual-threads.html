@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>虚拟线程 vs 平台线程 · 餐厅比喻（容易看懂版）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #f5f3ff; color: #1e293b; padding: 30px; }
+  h1 { color: #6d28d9; font-size: 24px; }
+  .sub { color: #7c3aed; opacity: .8; font-size: 14px; margin-bottom: 18px; }
+  .modes { display: flex; gap: 10px; margin-bottom: 16px; }
+  .modes button { background: #ede9fe; color: #5b21b6; border: 2px solid #ddd6fe; border-radius: 20px;
+                  padding: 8px 20px; font-size: 14px; cursor: pointer; }
+  .modes button.on { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+  .stats { display: flex; gap: 18px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat { background: #fff; border-radius: 12px; padding: 12px 20px; border: 2px solid #ddd6fe; text-align: center; }
+  .stat b { color: #7c3aed; font-size: 20px; display: block; }
+  .stat small { color: #64748b; }
+  .board { display: flex; gap: 16px; }
+  .waiters { flex: 1.4; }
+  .waiters h2 { font-size: 15px; color: #5b21b6; margin: 10px 0 8px; }
+  .wrow { display: flex; gap: 8px; flex-wrap: wrap; min-height: 60px; background: #fff; border-radius: 12px;
+          padding: 10px; border: 1px solid #ddd6fe; }
+  .waiter { width: 88px; height: 54px; border-radius: 10px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; font-size: 11px; border: 2px solid; }
+  .waiter .f { font-size: 20px; }
+  .p-waiter { background: #ede9fe; border-color: #a78bfa; color: #5b21b6; }
+  .p-waiter.busy { border-color: #f87171; background: #fee2e2; color: #dc2626; }
+  .v-waiter { background: #ecfdf5; border-color: #34d399; color: #047857; }
+  .table { width: 96px; border-radius: 10px; padding: 8px; text-align: center; font-size: 12px;
+           border: 2px solid #fde68a; background: #fffbeb; margin: 4px; }
+  .table .t-ic { font-size: 22px; }
+  .table .t-st { color: #92400e; font-weight: bold; }
+  .tables { flex: 1; }
+  .trow { display: flex; gap: 6px; flex-wrap: wrap; min-height: 60px; background: #fff; border-radius: 12px;
+          padding: 10px; border: 1px solid #ddd6fe; }
+  .log { margin-top: 14px; background: #fff; border: 1px solid #ddd6fe; border-radius: 12px; padding: 10px;
+         font-size: 12.5px; min-height: 120px; }
+  .log div { padding: 2px 0; color: #475569; }
+  .log .ok { color: #059669; font-weight: bold; } .log .bad { color: #dc2626; font-weight: bold; }
+  .note { margin-top: 14px; background: #fefce8; border: 2px dashed #fde047; border-radius: 12px;
+          padding: 14px 18px; font-size: 13.5px; color: #713f12; line-height: 1.8; }
+</style>
+</head>
+<body>
+<h1>虚拟线程 vs 平台线程 = 两种餐厅用人方式</h1>
+<div class="sub">stage6/01 · 平台线程=给每桌配<b>专属服务员</b>（贵，几十个就到顶）；虚拟线程=服务员在客人“看菜单思考”时<b>去服务别桌</b>（挂载/卸载）</div>
+
+<div class="modes">
+  <button id="m0" class="on" onclick="setMode(0)">🐢 平台线程模式：每桌专属服务员</button>
+  <button id="m1" onclick="setMode(1)">⚡ 虚拟线程模式：灵活跑位</button>
+</div>
+
+<div class="stats">
+  <div class="stat"><b id="s-waiters">0</b><small>服务员数</small></div>
+  <div class="stat"><b id="s-tables">0</b><small>正在服务的桌</small></div>
+  <div class="stat"><b id="s-cpu">0</b><small>真实人力消耗</small></div>
+</div>
+
+<div class="board">
+  <div class="waiters">
+    <h2>服务员（线程）</h2>
+    <div class="wrow" id="waiterRow"></div>
+    <h2 id="tablesTitle">客桌（每桌=一个 IO 等待任务）</h2>
+    <div class="trow" id="tableRow"></div>
+  </div>
+</div>
+
+<div class="log" id="logEl"></div>
+
+<div class="note">
+  💡 <b>比喻对照表</b>：<br>
+  · <b>平台线程</b> = 专属服务员（贵的正式工，最多养几十个；<b>阻塞=站桌边干等</b>，干等也算占用人力）<br>
+  · <b>虚拟线程</b> = “任务卡”（客人看菜单时，服务员把这张卡贴墙上跑别桌去；客人叫人时再回来——<b>挂载 mount/卸载 unmount</b>）<br>
+  · ⚠ <b>pinning</b> = 客人<b>抓着服务员袖子</b>不让走（<b>synchronized 块内阻塞</b>，JDK21）——这个服务员被钉死在这桌<br>
+  · ✅ 已在 community 项目开启：<span style="font-family:monospace;background:#ede9fe;padding:2px 6px;border-radius:4px">spring.threads.virtual.enabled=true</span>
+</div>
+
+<script>
+"use strict";
+let mode = 0;                       // 0=平台线程 1=虚拟线程
+let guests = 30;                    // 客桌数
+let pwCount = 0, vwBusy = 0;        // 平台服务员忙数 / 虚拟线程忙数
+const MAX_PW = 8;                   // 平台模式服务员上限
+let logs = [];
+
+function $(id){ return document.getElementById(id); }
+function addLog(t, cls){
+  logs.unshift({ t, cls }); logs = logs.slice(0, 8);
+  $("logEl").innerHTML = logs.map(l => `<div class="${l.cls||''}">${l.t}</div>`).join("");
+}
+function setMode(n){
+  mode = n;
+  $("m0").classList.toggle("on", n===0);
+  $("m1").classList.toggle("on", n===1);
+  pwCount = 0; vwBusy = 0;
+  addLog(n===0 ? "切换为平台线程模式：每个 IO 等待占一个昂贵的真线程"
+               : "切换为虚拟线程模式：IO 等待时让出载体线程");
+  render();
+}
+function serve(){
+  pwCount = 0; vwBusy = 0;
+  let served = 0;
+  for (let i = 0; i < guests; i++) {
+    if (mode === 0) {
+      if (pwCount < MAX_PW) { pwCount++; served++; }
+      else { addLog(`❌ 客桌 ${i+1}：服务员不够 → 排队等（平台线程池耗尽）`, "bad"); }
+    } else {
+      vwBusy++; served++;                       // 虚拟线程几乎无限
+    }
+  }
+  return served;
+}
+function render(){
+  $("waiterRow").innerHTML = "";
+  if (mode === 0) {
+    for (let i = 0; i < pwCount; i++)
+      $("waiterRow").innerHTML += `<div class="waiter p-waiter busy"><span class="f">🧑‍🍳</span><span>服务员${i+1}</span><span>站桌边等</span></div>`;
+    for (let i = pwCount; i < MAX_PW; i++)
+      $("waiterRow").innerHTML += `<div class="waiter p-waiter" style="opacity:.4"><span class="f">🧑‍🍳</span><span>服务员${i+1}</span><span>待命</span></div>`;
+    $("tablesTitle").textContent = `客桌（${guests} 桌，只有 ${pwCount} 桌有人在管）`;
+    $("tableRow").innerHTML = "";
+    for (let i = 0; i < guests; i++)
+      $("tableRow").innerHTML += `<div class="table"><div class="t-ic">🍽️</div><div class="t-st">${i < pwCount ? "服务中" : "没人管!"}</div></div>`;
+  } else {
+    for (let i = 0; i < 4; i++)
+      $("waiterRow").innerHTML += `<div class="waiter v-waiter"><span class="f">🦸</span><span>载体${i+1}</span><span>到处跑</span></div>`;
+    $("tablesTitle").textContent = `客桌（${guests} 桌，全部有虚拟任务在跟）`;
+    $("tableRow").innerHTML = "";
+    for (let i = 0; i < Math.min(guests, 30); i++)
+      $("tableRow").innerHTML += `<div class="table"><div class="t-ic">🍽️</div><div class="t-st">跟进中</div></div>`;
+  }
+  $("s-waiters").textContent = mode === 0 ? pwCount : 4;
+  $("s-tables").textContent = mode === 0 ? pwCount : guests;
+  $("s-cpu").textContent = mode === 0 ? pwCount + " 个真线程" : "4 个载体线程";
+}
+function runDemo(){
+  serve(); render();
+}
+function addGuests(n){
+  guests = Math.min(500, guests + n);
+  runDemo();
+}
+// 初始：30 桌平台模式
+setMode(0);
+runDemo();
+// 自动对比按钮
+function compare(){
+  // 平台模式：8 个服务员只能管 8 桌
+  setMode(0); pwCount = Math.min(MAX_PW, guests); runDemo();
+  setMode(1); runDemo();
+}
+</script>
+</body>
+</html>

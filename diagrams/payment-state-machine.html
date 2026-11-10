@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>支付状态机 CAS 竞态 · 系统设计 15</title>
+<style>
+  * { box-sizing: border-box; margin: 0; font-family: "Microsoft YaHei", sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; padding: 26px; }
+  h1 { color: #7dd3fc; font-size: 21px; }
+  .sub { color: #94a3b8; font-size: 13px; margin-bottom: 16px; }
+  .modes { margin-bottom: 14px; }
+  .modes span { color: #94a3b8; font-size: 13px; margin-right: 8px; }
+  .modes button { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 8px;
+                  padding: 7px 16px; font-size: 13px; cursor: pointer; margin-right: 6px; }
+  .modes button.on { background: #1e40af; color: #dbeafe; border-color: #3b82f6; }
+  .modes button.on.bad { background: #7f1d1d; color: #fecaca; border-color: #ef4444; }
+  .fsm { background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .fsm h3 { color: #7dd3fc; font-size: 14px; margin-bottom: 14px; }
+  .states { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .state { border: 2px solid #475569; border-radius: 10px; padding: 10px 16px; text-align: center;
+           font-size: 13px; color: #cbd5e1; transition: all .4s; }
+  .state .big { font-size: 18px; font-weight: bold; display: block; }
+  .state.cur { border-color: #38bdf8; background: #1c3d5a; color: #bae6fd; transform: scale(1.06); }
+  .state.paid { border-color: #34d399; background: #14532d; color: #86efac; }
+  .state.closed { border-color: #fbbf24; background: #78350f; color: #fcd34d; }
+  .state.lost { border-color: #ef4444; background: #450a0a; color: #fca5a5; opacity: .8; }
+  .trans { color: #64748b; font-size: 12px; }
+  .duel { display: flex; gap: 18px; margin-bottom: 16px; }
+  .actor { flex: 1; background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 14px; min-height: 168px; }
+  .actor h3 { font-size: 14px; margin-bottom: 10px; }
+  .actor.pay h3 { color: #34d399; } .actor.close h3 { color: #fbbf24; }
+  .step { background: #020617; border: 1px solid #1e293b; border-radius: 8px; padding: 8px 10px;
+          font-size: 12.5px; color: #94a3b8; margin-bottom: 8px; min-height: 38px; font-family: Consolas, monospace; }
+  .step.hit { border-color: #34d399; color: #86efac; }
+  .step.miss { border-color: #f87171; color: #fca5a5; }
+  .step.run { border-color: #fbbf24; }
+  .verdict { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 12px;
+             font-size: 13px; min-height: 84px; margin-bottom: 14px; color: #94a3b8; }
+  .verdict .ok { color: #34d399; } .verdict .no { color: #f87171; } .verdict .warn { color: #fcd34d; }
+  .btns button { background: #1e40af; color: #dbeafe; border: none; border-radius: 8px; padding: 9px 16px;
+                 font-size: 13px; cursor: pointer; margin: 0 10px 10px 0; }
+  .btns button:hover { background: #3b82f6; }
+  .btns button.reset { background: #7f1d1d; color: #fecaca; }
+  .result { font-size: 15px; padding: 10px 16px; border-radius: 10px; display: inline-block; margin-bottom: 12px;
+            background: #1e293b; color: #cbd5e1; }
+  .result.lose { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+  .result.win { background: #14532d; color: #86efac; border: 1px solid #34d399; }
+  .log { background: #020617; border: 1px solid #1e293b; border-radius: 10px; padding: 10px;
+         font-size: 12.5px; color: #94a3b8; min-height: 56px; }
+  .log div { padding: 2px 0; }
+</style>
+</head>
+<body>
+<h1>支付状态机 CAS 竞态动画</h1>
+<div class="sub">系统设计 15 / mq-mall OrderService.pay · 支付回调与超时关单同时到——一条 UPDATE 语句怎么定胜负</div>
+
+<div class="modes">
+  <span>并发控制方式：</span>
+  <button id="m-cas" class="on" onclick="setMode(true)">✅ CAS 状态机（UPDATE WHERE status=10）</button>
+  <button id="m-chk" onclick="setMode(false)">❌ 先查再改（SELECT → UPDATE）</button>
+</div>
+
+<div class="fsm">
+  <h3>订单状态机（当前状态高亮）</h3>
+  <div class="states">
+    <div class="state" id="s10"><span class="big">待支付</span>status=10</div>
+    <span class="trans">──支付成功──→</span>
+    <div class="state" id="s20"><span class="big">已支付</span>status=20</div>
+    <span class="trans">　　</span>
+    <div class="state" id="s30"><span class="big">已关闭</span>status=30</div>
+    <span class="trans">←──超时关单──（10 的另一条出边；已关闭+已扣款 → 自动退款）</span>
+  </div>
+</div>
+
+<div class="duel">
+  <div class="actor pay">
+    <h3>🟢 支付回调线程</h3>
+    <div class="step" id="p1">等待执行…</div>
+    <div class="step" id="p2">等待执行…</div>
+  </div>
+  <div class="actor close">
+    <h3>🟡 超时关单线程</h3>
+    <div class="step" id="c1">等待执行…</div>
+    <div class="step" id="c2">等待执行…</div>
+  </div>
+</div>
+
+<div class="verdict" id="verdict">两种模式都试一遍，再点「两者同时到达」——结局完全不同。这就是 mq-mall 的 <b>casPay/casClose</b> 为什么是一条带条件的 UPDATE。</div>
+
+<div class="btns">
+  <button onclick="run('pay')">① 只有支付回调到达</button>
+  <button onclick="run('close')">② 只有超时关单触发</button>
+  <button onclick="run('racePay')">③ 竞态：支付先提交</button>
+  <button onclick="run('raceClose')">④ 竞态：关单先提交</button>
+  <button class="reset" onclick="reset()">↺ 重置</button>
+</div>
+<div class="result" id="result">订单最终状态：待支付（点击上方按钮开始）</div>
+<div class="log" id="logEl"></div>
+
+<script>
+"use strict";
+let cas = true;
+const $ = id => document.getElementById(id);
+
+function setMode(v){
+  cas = v;
+  $("m-cas").classList.toggle("on", v); $("m-cas").classList.toggle("bad", false);
+  $("m-chk").classList.toggle("on", !v); $("m-chk").classList.toggle("bad", !v);
+  reset();
+  addLog(v ? "✅ CAS 模式：UPDATE 带 WHERE status=10，数据库行锁保证只有一个线程改得动"
+           : "❌ 先查再改：SELECT 看到状态 10 就 UPDATE——两步之间有窗口，并发下双双得手");
+}
+
+function reset(){
+  ["s10","s20","s30"].forEach(id => $(id).classList.remove("cur","paid","closed","lost"));
+  $("s10").classList.add("cur");
+  ["p1","p2","c1","c2"].forEach(id => { $(id).textContent = "等待执行…"; $(id).className = "step"; });
+  $("verdict").innerHTML = "两种模式都试一遍，再点「两者同时到达」——结局完全不同。这就是 mq-mall 的 <b>casPay/casClose</b> 为什么是一条带条件的 UPDATE。";
+  $("result").textContent = "订单最终状态：待支付（点击上方按钮开始）";
+  $("result").className = "result";
+  $("logEl").innerHTML = "";
+  addLog("已重置：订单回到待支付(status=10)");
+}
+
+function addLog(t){
+  const d = document.createElement("div");
+  d.innerHTML = t;
+  $("logEl").prepend(d);
+}
+function setState(cls, keepOld){
+  ["s10","s20","s30"].forEach(id => { if(!keepOld) $(id).classList.remove("cur"); });
+  $(cls).classList.add("cur");
+}
+function step(id, sql, cls){
+  const el = $(id);
+  el.innerHTML = sql;
+  el.className = "step" + (cls ? " " + cls : "");
+}
+function finish(statusText, cls, verdictHtml, resultCls){
+  ["s10","s20","s30"].forEach(id => $(id).classList.remove("cur"));
+  if (cls) {
+    const parts = cls.split(" ");
+    const el = $(parts[0]);
+    if (el && parts.length > 1) el.classList.add(parts.slice(1).join(" "));
+  }
+  $("verdict").innerHTML = verdictHtml;
+  $("result").textContent = "订单最终状态：" + statusText;
+  $("result").className = "result " + (resultCls || "");
+}
+
+function run(scenario){
+  reset();
+  const payWin = (scenario === "pay" || scenario === "racePay");
+  const race = scenario.startsWith("race");
+
+  if (scenario === "pay" || scenario === "racePay"){
+    // 支付线程两条腿
+    step("p1", cas ? "UPDATE t_order SET status=20 WHERE order_no='A1' AND status=10"
+                   : "SELECT status FROM t_order WHERE order_no='A1'  → 读到 10", race ? "run" : "");
+    if (cas){
+      step("p2", "→ 影响 1 行 ✅ 状态改为 20", "hit");
+    } else {
+      step("p2", "确认是10 → UPDATE t_order SET status=20 ...（无条件）→ 成功", "hit");
+    }
+    // 关单线程
+    if (race){
+      if (cas){
+        step("c1", "UPDATE ... SET status=30 WHERE status=10  → 影响 0 行 ❌（已被支付抢先改掉）", "miss");
+        step("c2", "回读状态=20（已支付）→ 分支：忽略关单，什么都不做", "");
+        finish("已支付（关单方 CAS 失败，读到 20 正确放弃）", "s20 paid",
+          '<span class="ok">✅ CAS 赢家：支付。关单的 UPDATE 影响 0 行 → 回读状态走「已支付→忽略」分支。</span><span class="ok">这就是 OrderService.closeIfTimeout() 返回 false 的那条路径——一行 SQL 完成仲裁。</span>', "win");
+      } else {
+        step("c1", "SELECT status → 读到 10（支付还没提交）", "run");
+        step("c2", "确认是10 → UPDATE SET status=30（无条件）→ 也成功！两个线程都改了", "hit");
+        finish("已关闭（但支付也成功了！）——资损", "s30 closed",
+          '<span class="no">❌ 双写事故：两个线程都"查到 10 → 改成功"。最终状态取决于谁后提交（这里是 30 已关闭），</span><span class="no">但支付渠道已扣款 → 用户付了钱订单却被关 → <b>资损客诉</b>。check-then-act 的两步之间就是竞态窗口。</span>', "lose");
+      }
+    } else {
+      step("c1", "—（本场景关单未触发）", "");
+      step("c2", "—", "");
+      finish("已支付", "s20 paid",
+        '<span class="ok">✅ 无并发，正常推进。真实系统的考验在下面两个"竞态"按钮。</span>', "win");
+    }
+    addLog(payWin ? "支付回调处理完成" : "支付完成（无并发）");
+    return;
+  }
+
+  if (scenario === "close" || scenario === "raceClose"){
+    if (cas){
+      step("c1", "UPDATE ... SET status=30 WHERE status=10 → 影响 1 行 ✅", "hit");
+      step("c2", "关闭成功 → 释放库存 + 发关单事件", "");
+    } else {
+      step("c1", "SELECT status → 读到 10", "");
+      step("c2", "确认是10 → UPDATE SET status=30 → 成功", "hit");
+    }
+    if (race){
+      if (cas){
+        step("p1", "UPDATE ... SET status=20 WHERE status=10 → 影响 0 行 ❌（关单抢先了）", "miss");
+        step("p2", "回读状态=30（已关闭）→ 分支：订单已关，若已扣款走<b>自动退款</b>", "");
+        finish("已关闭（支付方 CAS 失败 → 自动退款）", "s30 closed",
+          '<span class="warn">✅ CAS 赢家：关单。支付的 UPDATE 影响 0 行 → 回读走「已关闭→退款」分支。</span><span class="warn">OrderService.pay() 里 throw \"订单已超时关闭，若已扣款将自动退款\" 就是这条——输方不重试、不覆盖，按状态分支处理。</span>', "win");
+      } else {
+        step("p1", "SELECT status → 读到 10（关单还没提交）", "run");
+        step("p2", "确认是10 → UPDATE SET status=20（无条件）→ 也成功！", "hit");
+        finish("已支付覆盖了已关闭——库存双发", "s20 paid",
+          '<span class="no">❌ 双写事故：关单已释放库存、支付又标记成功 → <b>订单发货但库存已多回滚一份</b>，超卖风险。</span><span class="no">两个无条件 UPDATE 后写覆盖先写，谁后到谁说了算。</span>', "lose");
+      }
+    } else {
+      step("p1", "—（本场景支付未到）", "");
+      step("p2", "—", "");
+      finish("已关闭（库存已释放）", "s30 closed",
+        '<span class="ok">✅ 无并发，正常关单。试试上面的竞态按钮。</span>', "win");
+    }
+    addLog("超时关单处理完成");
+  }
+}
+
+addLog("初始化完成。先在两种模式下各点一遍 ③④，观察胜负与分支——这就是「状态机 CAS 一条语句完成仲裁」");
+</script>
+</body>
+</html>

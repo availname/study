@@ -1,0 +1,33 @@
+server:
+  port: 8080
+
+spring:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+    # ---------- 生产端可靠性（stage2/03、stage3/01） ----------
+    publisher-confirm-type: correlated   # Confirm：Broker 收到消息后异步回执
+    publisher-returns: true              # Return：路由不到队列时退回生产者
+    template:
+      mandatory: true                    # 开启 mandatory，Return 才会生效
+
+    # ---------- 消费端（stage2/03、stage3/01、stage3/05） ----------
+    listener:
+      simple:
+        acknowledge-mode: auto           # 方法正常返回才确认，抛异常不确认
+        default-requeue-rejected: false  # 本地重试耗尽后，不重回队列 → 进死信
+        concurrency: 1
+        max-concurrency: 4
+        prefetch: 10
+        retry:
+          enabled: true                  # 本地重试（不回队列，内存里重跑）
+          max-attempts: 3
+          initial-interval: 500
+          multiplier: 2                  # 0.5s → 1s → 2s
+
+logging:
+  level:
+    com.example.mqdemo: INFO
