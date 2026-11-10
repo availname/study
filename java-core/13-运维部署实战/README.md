@@ -1,6 +1,6 @@
 # 13 · 运维部署实战：Docker、Linux 与上线
 
-代码写完只是开始——**部署上线、日志排查、故障处理**是后端的另一半战场。本模块 4 篇全部结合本工作区的真实项目（mq-mall/learn-center 的 compose、你踩过的 Docker 坑）。
+代码写完只是开始——**部署上线、日志排查、故障处理**是后端的另一半战场。本模块 5 篇全部结合本工作区的真实项目（mq-mall/learn-center 的 compose、你踩过的 Docker 坑）。
 
 | 篇 | 主题 | 核心考点 |
 |----|------|---------|
@@ -8,6 +8,7 @@
 | [02](02-Linux排查命令速查.md) | Linux 排查命令 | top/jps/jstack / **日志三剑客 grep-awk-sed** / 网络 netstat-ss / 文件查找 |
 | [03](03-上线部署Checklist.md) | 上线流程 | 发布前检查 / 回滚预案 / 灰度 / 监控告警 |
 | [04](04-监控告警与Metrics.md) | 监控告警 | Micrometer→Prometheus→Grafana 链路 / **四黄金指标（看 P99）** / 业务大盘 / 告警纪律 |
+| [05](05-Kubernetes入门-从Compose到容器编排.md) | Kubernetes 入门 | Pod/Deployment/Service/探针 / **滚动更新与自愈** / 多副本下的状态外置（对接 XXL-Job 篇） |
 
 ## 与已有内容的连接
 

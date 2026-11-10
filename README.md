@@ -1,8 +1,8 @@
 # 🗺️ Java 后端学习工作区 · 总导航
 
-> 🚀 **配套学习应用**：双击打开 **[study-app.html](diagrams/study-app.html)**——把整个教学体系装进一个零依赖网页：课程导航与完成度追踪、23 个示意图画廊、54 张面试翻转卡、12 坑速览、任务清单（进度存浏览器本地）。
+> 🚀 **配套学习应用**：双击打开 **[study-app.html](diagrams/study-app.html)**——把整个教学体系装进一个零依赖网页：课程导航与完成度追踪（148 篇）、23 个示意图画廊、58 张面试翻转卡、12 坑速览、任务清单（进度存浏览器本地）。
 
-这是一个完整的 **Java 后端开发学习体系**：约 90 篇教学文档 + 3 个可运行项目 + 23 个交互示意图 + 12 坑实录。本页是唯一入口，按下面的路线走即可。
+这是一个完整的 **Java 后端开发学习体系**：约 160 篇教学文档 + 4 个可运行项目 + 23 个交互示意图 + 12 坑实录。本页是唯一入口，按下面的路线走即可。
 
 ## 学习路线（按此顺序，不要跳）
 
@@ -48,13 +48,13 @@
 
 | 目录 | 内容 | 入口 |
 |------|------|------|
-| `mq/` | 消息队列 18 篇 + Kafka 专篇 + RocketMQ 专篇 + **延迟任务方案横向对比专题** + **mq-mall 项目**（订单/秒杀/可靠性） | [mq/README](mq/README.md) |
-| `redis/` | Redis 18 篇 + 8 场景 + **redis-demo** | [redis/README](redis/README.md) |
+| `mq/` | 消息队列 16 篇 + Kafka 专篇 5 + RocketMQ 专篇 2 + 视频平台场景 4 + **延迟任务方案横向对比专题** + **mq-mall 项目**（订单/秒杀/可靠性） | [mq/README](mq/README.md) |
+| `redis/` | Redis 19 篇 + 8 场景 + **redis-demo** | [redis/README](redis/README.md) |
 | `stage6-新技术专题/` | 虚拟线程/Spring AI/向量检索/OTel/CICD/CDC/Testcontainers/响应式 | [README](stage6-新技术专题/README.md) |
 | `stage7-AI应用开发/` | LLM全景/Spring AI流式/RAG/RAG进阶/AI工程化/AI工作流与Agent/MCP/AI安全评测/**微调选型(LoRA)/多模态** | [README](stage7-AI应用开发/README.md) |
 | `community/` | **总毕业项目**（四件套联动的社区论坛） | [README](community/README.md) |
 | `learn-center/` | **终极整合项目**：在线学习平台（MyBatis-Plus + 限量抢课秒杀 + 超时取消延迟链 + 签到/榜单/UV + 刷题错题本） | [README](learn-center/README.md) |
-| `java-core/` | Java 后端核心 50+ 篇（并发/JVM/MySQL/Spring/微服务/设计模式/网络/Git/**系统设计 7 题/接口设计/日志规范/OS 基础/登录态与接口安全**）+ **面试速查手册** + **模拟面试追问链** + **简历项目话术** + **面试反问与Offer沟通** | [README](java-core/README.md) |
+| `java-core/` | Java 后端核心 50+ 篇（并发/JVM/MySQL/Spring/微服务/设计模式/网络/Git/**系统设计 7 题/接口设计/日志规范/OS 基础/登录态与接口安全/K8s 入门**）+ **面试速查手册** + **模拟面试追问链** + **简历项目话术** + **面试反问与Offer沟通** | [README](java-core/README.md) |
 | `diagrams/` | 23 个交互示意图（🐣 生活比喻版 + 🔧 技术版） | [README](diagrams/README.md) |
 | `mq/踩坑实录-完整复盘.md` | 12 个真实坑（现象→排查→根因→修复→教训） | [直接看](mq/踩坑实录-完整复盘.md) |
 | `learn-center/README.md` | learn-center 运行/API/知识融合映射 | [直接看](learn-center/README.md) |

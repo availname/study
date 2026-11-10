@@ -157,7 +157,7 @@ POST /api/videos（秒回 videoId，本地消息表受理）
 | 雪花简化版 Ids | Leaf/雪花 + 时钟回拨处理 |
 | 秒杀结果存内存 Map | 存 Redis/DB，重启可恢复 |
 | 通知 = 日志 | 短信/推送网关 + 失败重试 |
-| 单机部署 | 消费者/生产者拆独立服务 + 注册中心 |
+| 单机部署 | 消费者/生产者拆独立服务 + 注册中心；多副本上 K8s（**见 [java-core/13-05 Kubernetes 入门](../../java-core/13-运维部署实战/05-Kubernetes入门-从Compose到容器编排.md)**——OrderSweepJob 的 CAS 幂等就是为多副本预埋的防线） |
 
 ## 扩展练习（学完教程后做）
 

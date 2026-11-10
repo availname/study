@@ -20,11 +20,11 @@ D:\JavaSpace\study\
 | ★★★ | [02-JVM虚拟机](02-JVM虚拟机/README.md) | ✅ 完整 5 篇 | GC/内存/调优必考 | binlog（你在 MQ 学过）与 GC 日志同源思想 |
 | ★★★ | [03-MySQL 深入](03-MySQL深入/README.md) | ✅ 完整 7 篇 | 索引/事务/MVCC 必考 | binlog→CDC（stage6/06）；慢查询→Trace 归因 |
 | ★★ | [04-Spring 核心原理](04-Spring核心原理/README.md) | ✅ 完整 5 篇 | IoC/AOP/事务 | community 踩的 @Transactional 自调用坑（并发篇代理失效） |
-| ★★ | [05-微服务全家桶](05-微服务全家桶/README.md) | ✅ 完整 6 篇 | SpringCloud Alibaba | 对接你工作区的 pmhub 项目 |
+| ★★ | [05-微服务全家桶](05-微服务全家桶/README.md) | ✅ 完整 7 篇 | SpringCloud Alibaba | 对接你工作区的 pmhub 项目 |
 | ★ | [06-设计模式](06-设计模式/README.md) | ✅ 完整 5 篇 | 穿插在源码里讲 | mq-mall 的"可靠消息门面"=门面+模板方法；责任链/状态机篇连支付设计 |
 | ★ | [07-网络基础](07-网络基础/README.md) | ✅ 完整 5 篇 | TCP/HTTP | epoll（Redis 篇）与三次握手联合记忆 |
 | ★ | [08-Git与协作](08-Git与协作.md) | ✅ | 日常流/分支/事故自救/CI 联动 | 本工作区推 GitHub 的完整实战（SSH 443/gh/踩坑） |
-| ★★ | [13-运维部署实战](13-运维部署实战/README.md) | ✅ 完整 4 篇 | Docker/Linux/上线发布/**监控告警** | 本工作区 compose 实战 + 踩坑实录坑六/七/十一/十二；OTel 篇的 Metrics 姊妹篇 |
+| ★★ | [13-运维部署实战](13-运维部署实战/README.md) | ✅ 完整 5 篇 | Docker/Linux/上线发布/**监控告警/K8s 入门** | 本工作区 compose 实战 + 踩坑实录坑六/七/十一/十二；OTel 篇的 Metrics 姊妹篇；K8s 篇对接微服务 07 多实例问题 |
 | 🎯 | [模拟面试追问链](模拟面试追问链.md) | ✅ 13 条链 | 递进式深挖演练 | 沿简历词追问到底（MQ可靠性/幂等/秒杀/锁/JVM/事务/虚拟线程/支付/接口/**安全**） |
 | 🎯 | [面试速查手册](面试速查手册.md) | ✅ 40+ 题 | 全模块高频题骨架 | 面试前三遍 |
 | 🎯 | [简历项目话术](简历项目话术.md) | ✅ | mq-mall/community 怎么写 + 追问应对 | 含王牌故事讲法 |
