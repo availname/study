@@ -32,8 +32,8 @@ big-center (8085)
 | 消息推送（SSE+离线落库） | java-core/14 题三 | ✅ `push/`（三通道：SSE 在线直推→落库→拉取兜底；Redis 在线路由；未读数=最新 ID−已读位点 O(1)） |
 | 扫码登录（uuid 状态机） | [java-core/12-系统设计三题](../java-core/12-系统设计三题.md) 题二 | ✅ `auth/qrcode/`（uuid 状态机 WAITING→SCANNED→CONFIRMED 条件推进（setIfPresent CAS）、TTL 5min 防重放、确认人=扫码人防越权、token 一次性签发即清理、PC 轮询接口） |
 | 限流器（Lua 滑动窗口+AOP） | [java-core/12-系统设计三题](../java-core/12-系统设计三题.md) 题三 | ✅ `rate/`（ZSET 时间戳滑动窗口 Lua 原子 `lua/rate_limit.lua`、@RateLimit 注解 AOP 细限到人、超限 5001 快速失败；已打到登录（防撞库 5/min）/抢红包（30/min）/下单（10/min）） |
-| 设计模式实战（责任链/策略/状态机/门面） | java-core/06 | ⬜ |
-| java-core-lab 实验室 | java-core/01-05/06/08 | ⬜ |
+| 设计模式实战（责任链/策略/状态机/门面） | [java-core/06-设计模式](../java-core/06-设计模式/) 五篇 | ✅ 落在业务里：策略+门面 `pay/PaymentFacade`、状态机 `pay/PayOrderMapper.cas*`/`redpack/casStatus`、责任链 `PaymentService.handleCallback` 验签→金额→幂等链；可运行示例 `lab/patterns/`（单例五种/JDK 代理/策略+模板+责任链/状态机表驱动） |
+| java-core-lab 实验室 | [java-core/00](../java-core/00-Java语言基石/)、[01-并发](../java-core/01-并发编程/)、[02-JVM](../java-core/02-JVM虚拟机/)、[06-设计模式](../java-core/06-设计模式/) | ✅ `lab/`（basics：HashMap 扩容反射/泛型擦除+注解扫描/Stream 分组/String 相等性；concurrent：线程六状态/锁升级/CAS+ABA 版本号/volatile+DCL/线程池七参数/AQS 自实现锁/CHM+ThreadLocal 泄漏/虚拟线程衔接；jvm：内存区+Young GC+可恢复 OOM+GC 参数模板；patterns 同上）——每个类带 `// 教程:` 锚点注释，单独运行 main |
 
 ## 包结构
 
