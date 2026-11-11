@@ -1,0 +1,51 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: big-center
+  datasource:
+    url: jdbc:mysql://localhost:3307/big_center?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root123
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/schema.sql
+  data:
+    redis:
+      host: localhost
+      port: 6380
+      key-prefix: "bc:"
+  rabbitmq:
+    host: localhost
+    port: 5673
+    username: guest
+    password: guest
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        prefetch: 10
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 500
+          multiplier: 2
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+
+big-center:
+  worker-id: 1        # 雪花机器 ID：多实例部署时按实例区分（0-1023）
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name},%X{traceId:-}]"   # 日志六要素：traceId 内嵌（java-core/17）
