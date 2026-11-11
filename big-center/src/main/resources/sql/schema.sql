@@ -44,3 +44,23 @@ CREATE TABLE IF NOT EXISTS t_pay_callback (
     created_at       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     UNIQUE KEY uk_channel_trade (channel_trade_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调流水（幂等第一层，T+1 对账平台侧数据源）';
+
+CREATE TABLE IF NOT EXISTS t_red_pack (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    owner_id      BIGINT      NOT NULL,
+    total_fen     BIGINT      NOT NULL,
+    count         INT         NOT NULL COMMENT '份数',
+    grabbed_count INT         NOT NULL DEFAULT 0,
+    status        TINYINT     NOT NULL DEFAULT 10 COMMENT '10进行中 20已抢完 30退款中 40已退款',
+    created_at    DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='红包主体（java-core/14 题二）';
+
+CREATE TABLE IF NOT EXISTS t_red_pack_detail (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    pack_id    BIGINT      NOT NULL,
+    user_id    BIGINT      NOT NULL,
+    amount_fen BIGINT      NOT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE KEY uk_pack_user (pack_id, user_id) COMMENT 'MQ 重复消费幂等',
+    KEY idx_pack (pack_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='抢红包明细（MQ 异步落库）';

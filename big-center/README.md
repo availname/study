@@ -27,7 +27,7 @@ big-center (8085)
 | JWT 登录（双 token/黑名单） | [java-core/19-登录态与接口安全](../java-core/19-登录态与接口安全.md) | ✅ `auth/`（JwtService 双 token + BCrypt + 黑名单 + refresh 旋转；`JwtAuthInterceptor` 与 learn-center Redis token 拦截器同构，差异只在"验签解析"替代"Redis 查 userId"） |
 | 短链接服务（发号/302/布隆） | [java-core/12-系统设计三题](../java-core/12-系统设计三题.md) 题一 | ✅ `shortlink/`（雪花→Base62 发号无碰撞；302 可统计；布隆→Redis→库三层解析；INCR+阈值回写 Write Behind） |
 | 支付中心（状态机 CAS/回调幂等/对账） | [java-core/15-系统设计·支付系统](../java-core/15-系统设计·支付系统.md) | ✅ `pay/`（四关卡：CAS 状态机+输方分支 / 流水唯一索引+CAS 双层幂等 / 掉单查单补偿 / 金额分+比对+验签；T+1 三单对账差错池；设计模式：门面+策略 `PaymentFacade`/`PaymentChannel`） |
-| 抢红包（二倍均值/TTL+DLX） | java-core/14 题二 | ⬜ |
+| 抢红包（二倍均值/TTL+DLX） | [java-core/14-系统设计进阶三题](../java-core/14-系统设计进阶三题.md) 题二 | ✅ `redpack/`（二倍均值预拆+LPUSH 重活放写少侧；SADD 防重+LPOP 原子认领不超发不重复、没抢到退回名单；明细 MQ 削峰落库；24h TTL+CAS 状态机过期退款、CAS 输方幂等） |
 | 点赞系统（Lua 原子/MQ 刷库） | java-core/14 题一 | ⬜ |
 | 消息推送（SSE+离线落库） | java-core/14 题三 | ⬜ |
 | 扫码登录（uuid 状态机） | java-core/12 题二 | ⬜ |
