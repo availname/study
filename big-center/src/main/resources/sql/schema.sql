@@ -20,3 +20,27 @@ CREATE TABLE IF NOT EXISTS t_short_link (
     UNIQUE KEY uk_short_code (short_code),
     UNIQUE KEY uk_long_url (long_url) COMMENT '同一长 URL 防重复发号'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='短链映射（java-core/12 题一）';
+
+CREATE TABLE IF NOT EXISTS t_pay_order (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    pay_order_no VARCHAR(64)  NOT NULL,
+    user_id      BIGINT       NOT NULL,
+    channel_code VARCHAR(16)  NOT NULL COMMENT '渠道码（策略路由）',
+    amount_fen   BIGINT       NOT NULL COMMENT '金额单位：分（钱上不允许 double）',
+    subject      VARCHAR(128) NOT NULL,
+    status       TINYINT      NOT NULL DEFAULT 10 COMMENT '10待支付 20已支付 30已关闭 40已退款（状态机）',
+    paid_at      DATETIME(3)  NULL,
+    created_at   DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE KEY uk_pay_order_no (pay_order_no),
+    KEY idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付单（java-core/15 四关卡）';
+
+CREATE TABLE IF NOT EXISTS t_pay_callback (
+    id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    channel_trade_no VARCHAR(64)  NOT NULL COMMENT '渠道流水号——唯一索引是回调幂等第一层',
+    pay_order_no     VARCHAR(64)  NOT NULL,
+    amount_fen       BIGINT       NOT NULL,
+    status           TINYINT      NOT NULL,
+    created_at       DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE KEY uk_channel_trade (channel_trade_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调流水（幂等第一层，T+1 对账平台侧数据源）';
