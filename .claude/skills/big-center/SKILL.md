@@ -41,6 +41,7 @@ description: 执行 big-center 总装项目——把 study 教学体系全部知
 8. ✅ 限流器（12 篇）：Lua 滑动窗口+@RateLimit AOP 打到前面所有接口（00c5ac3）
 9. ✅ java-core-lab：并发/基石/设计模式/JVM 的 main 示例集（cfa9eca）
 10. ✅ 收尾：README 对号入座表 + 全量测试（0505e01）——66 例全绿
+11. ✅ 总装能力补齐（B 部分三项）：seckill 秒杀四层漏斗 / post 审核管道+热榜衰减 / ai Mock-Real 双实现——79 例全绿
 
 中途中断后恢复：`git log --oneline` 看最后完成的步骤，从下一步继续。
 

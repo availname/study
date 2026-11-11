@@ -29,10 +29,13 @@ flowchart LR
     Svc --> RP[redpack 红包<br/>14-2: 二倍均值预拆/LPOP 认领]
     Svc --> LK[like 点赞<br/>14-1: Lua 判重+计数原子]
     Svc --> PS[push 推送<br/>14-3: SSE/落库/拉取三通道]
+    Svc --> SK[seckill 秒杀<br/>四层漏斗: Lua 预扣/MQ 建单/DB 兜底]
+    Svc --> PT[post 帖子<br/>审核管道 AI 三分支/热榜衰减]
+    Svc --> AI[ai 学习报告<br/>Mock/Real 双实现]
 
-    PAY & RP & LK & PS --> Redis[(Redis 6380<br/>bc: 前缀)]
+    PAY & RP & LK & PS & SK & PT --> Redis[(Redis 6380<br/>bc: 前缀)]
     PAY & RP & LK & PS & SL --> MySQL[(MySQL 3307<br/>big_center 库)]
-    LK & RP -.削峰.-> MQ[(RabbitMQ 5673)]
+    LK & RP & SK & PT -.削峰.-> MQ[(RabbitMQ 5673)]
 
     subgraph 基础设施
         Ids[common/Ids 雪花<br/>11 篇: 时钟回拨拒绝]
@@ -59,6 +62,10 @@ flowchart LR
 | 消息推送（SSE+离线落库） | java-core/14 题三 | ✅ `push/`（三通道：SSE 在线直推→落库→拉取兜底；Redis 在线路由；未读数=最新 ID−已读位点 O(1)） |
 | 扫码登录（uuid 状态机） | java-core/12 题二 | ✅ `auth/qrcode/`（uuid 状态机 WAITING→SCANNED→CONFIRMED 条件推进（setIfPresent CAS）、TTL 5min 防重放、确认人=扫码人防越权、token 一次性签发即清理、PC 轮询接口） |
 | 限流器（Lua 滑动窗口+AOP） | java-core/12 题三 | ✅ `rate/`（ZSET 时间戳滑动窗口 Lua 原子 `lua/rate_limit.lua`、@RateLimit 注解 AOP 细限到人、超限 5001 快速失败；已打到登录（防撞库 5/min）/抢红包（30/min）/下单（10/min）） |
+| 秒杀四层漏斗（限量课抢购） | [learn-center/](../learn-center/) EnrollController+lua（mq-mall 秒杀篇依据） | ✅ `seckill/`（Lua 原子预扣 `lua/seckill.lua`（判重+扣名额+登记三步原子）→ MQ 异步建单削峰（`SeckillConsumer`）→ DB 唯一索引幂等 + `WHERE enrolled<quota` 防超卖兜底；Redis/DB 两道防线 fencing token 思想） |
+| 帖子审核管道（AI 三分支） | [community/](../community/) AuditService（MQ 管道模式） | ✅ `post/`（发帖落库待审 + MQ 进管道；AI 审核：BLOCK 拒绝/HUMAN 人工卡点/其余过审；CAS 状态机推进（期望状态必须匹配来源）、积分唯一索引幂等 `t_points_log.message_id`） |
+| 热榜时间衰减 | [community/](../community/) HeatDecayJob（stage5/05 热搜同款） | ✅ `post/HeatDecayJob`（ZSet 热度榜每小时 ×0.98，低于 0.5 出榜——旧帖自然沉底不删除） |
+| AI 学习报告（Mock/Real 双实现） | [learn-center/](../learn-center/) ai/ 包（stage7/04 防幻觉分工） | ✅ `ai/`（ChatPort 策略接口 + `@ConditionalOnProperty` 切换：数字由系统聚合（秒杀/帖子/积分/点赞真实 SQL），措辞由模型生成——事实系统给，表述 AI 编） |
 | 越权防护（where user_id） | java-core/19 第五节 | ✅ `pay/PaymentService.findByNo`（数据权限进查询条件，天然不越权）；推送 send 的 from 取登录态 |
 | 设计模式实战（责任链/策略/状态机/门面） | [java-core/06-设计模式](../java-core/06-设计模式/) 五篇 | ✅ 落在业务里：策略+门面 `pay/PaymentFacade`、状态机 `pay/casPaid` 与 `redpack/casStatus`、责任链 `PaymentService.handleCallback` 验签→金额→幂等链；可运行示例 `lab/patterns/` |
 | java-core-lab 实验室 | [00 基石](../java-core/00-Java语言基石/) / [01 并发](../java-core/01-并发编程/) / [02 JVM](../java-core/02-JVM虚拟机/) / [06 设计模式](../java-core/06-设计模式/) | ✅ `lab/`（basics：HashMap 扩容反射/泛型擦除+注解扫描/Stream 分组/String 相等性；concurrent：线程六状态/锁升级/CAS+ABA 版本号/volatile+DCL/线程池七参数/AQS 自实现锁/CHM+ThreadLocal 泄漏/虚拟线程衔接；jvm：内存区/Young GC/可恢复 OOM/GC 参数模板） |
@@ -76,6 +83,9 @@ com.bigcenter
 ├── like        LikeService(lua/like.lua、unlike.lua)
 ├── push        PushService(SSE 三通道+位点)
 ├── rate        RateLimit(注解)/RateLimiterService(lua/rate_limit.lua)/RateLimitAspect(AOP)
+├── seckill     SeckillController(lua/seckill.lua 四层漏斗)/SeckillConsumer(MQ 建单削峰)
+├── post        PostService(审核管道)/AuditConsumer(AI 三分支+CAS)/HeatDecayJob(热榜衰减)
+├── ai          ChatPort(策略)/MockChatPort/RealChatPort/AiReportService(数据聚合+AI 表述)
 └── lab         java-core-lab（basics/concurrent/jvm/patterns，教程锚点注释）
 ```
 
@@ -89,6 +99,9 @@ com.bigcenter
 | 支付 | `POST /api/pay/order` `/callback`（渠道回调免登录），`POST /{no}/compensate`，`GET /{no}` | 金额单位分 |
 | 红包 | `POST /api/redpack`，`POST /{packId}/grab`，`GET /{packId}/details` | grab 带 @RateLimit |
 | 推送 | `GET /api/push/connect`(SSE)，`POST /send` `/read`，`GET /pull` `/unread` | 位点差值算未读 |
+| 秒杀 | `POST /api/seckill/{courseId}`，`GET /api/seckill/result/{courseId}` | Lua 预扣+MQ 建单+轮询 |
+| 帖子 | `POST /api/post`，`GET /api/post/{id}`，`GET /api/post/hot?n=10` | 发帖进审核管道；热榜 ZSet |
+| AI | `GET /api/ai/report` | 四项数据聚合 → AI 表述 |
 
 ## 运行
 
@@ -101,7 +114,7 @@ mvn spring-boot:run
 ## 测试
 
 ```bash
-mvn test    # 66 例纯 Mockito 单测，无 Docker 全绿（学习体系铁律）
+mvn test    # 79 例纯 Mockito 单测，无 Docker 全绿（学习体系铁律）
 ```
 
-重点钉住的教学语义：Lua 判重计数原子（like）、CAS 输方分支（pay 竞态三分支）、双层幂等（回调唯一索引）、LPOP 不超发+名单退回（redpack）、状态机条件推进（qrcode setIfPresent）、Write Behind 阈值回写（shortlink）。
+重点钉住的教学语义：Lua 判重计数原子（like）、CAS 输方分支（pay 竞态三分支）、双层幂等（回调唯一索引）、LPOP 不超发+名单退回（redpack）、状态机条件推进（qrcode setIfPresent）、Write Behind 阈值回写（shortlink）、秒杀预扣成功才发 MQ（seckill）、审核三分支+CAS 输方跳过+积分幂等（post/AuditConsumer）、热榜衰减出榜阈值（HeatDecayJob）、AI 报告数据进 prompt（ai/AiReportService）。

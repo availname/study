@@ -74,3 +74,59 @@ CREATE TABLE IF NOT EXISTS t_push_message (
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     KEY idx_to_user (to_user_id, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站内消息（离线落库+拉取兜底；公告走读扩散不落表）';
+
+CREATE TABLE IF NOT EXISTS t_course (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title      VARCHAR(128) NOT NULL,
+    quota      INT          NOT NULL COMMENT '总名额',
+    enrolled   INT          NOT NULL DEFAULT 0 COMMENT '已报名数（DB 兜底防线）',
+    price_fen  BIGINT       NOT NULL DEFAULT 0,
+    created_at DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='限量课（秒杀四层漏斗）';
+
+CREATE TABLE IF NOT EXISTS t_seckill_order (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    order_no   VARCHAR(64) NOT NULL,
+    user_id    BIGINT      NOT NULL,
+    course_id  BIGINT      NOT NULL,
+    status     TINYINT     NOT NULL DEFAULT 0 COMMENT '0已抢 1已支付 2已取消',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE KEY uk_order_no (order_no),
+    UNIQUE KEY uk_user_course (user_id, course_id) COMMENT 'MQ 重复消费幂等+一人一课 DB 兜底'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='秒杀订单（MQ 异步建单）';
+
+CREATE TABLE IF NOT EXISTS t_post (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title         VARCHAR(128) NOT NULL,
+    content       VARCHAR(4096) NOT NULL,
+    author_id     BIGINT      NOT NULL,
+    status        TINYINT     NOT NULL DEFAULT 0 COMMENT '0待审 1通过 2拒绝 3待人工（审核状态机）',
+    reject_reason VARCHAR(256) NULL,
+    view_count    BIGINT      NOT NULL DEFAULT 0,
+    like_count    INT         NOT NULL DEFAULT 0,
+    heat          DOUBLE      NOT NULL DEFAULT 0 COMMENT '热度分（ZSet 镜像，热榜衰减基准）',
+    created_at    DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    KEY idx_status (status),
+    KEY idx_author (author_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='帖子（审核管道+热榜，community 模式总装）';
+
+CREATE TABLE IF NOT EXISTS t_points_log (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT      NOT NULL,
+    points     INT         NOT NULL,
+    reason     VARCHAR(64) NOT NULL,
+    message_id VARCHAR(64) NOT NULL COMMENT '唯一索引幂等（两层防线 DB 层）',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE KEY uk_message_id (message_id),
+    KEY idx_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='积分流水（审核通过发奖，唯一索引幂等）';
+
+CREATE TABLE IF NOT EXISTS t_like_archive (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    target_id  BIGINT      NOT NULL,
+    user_id    BIGINT      NOT NULL,
+    delta      INT         NOT NULL COMMENT '+1/-1 归档增量',
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    KEY idx_user (user_id),
+    KEY idx_target (target_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='点赞归档（MQ 异步刷库的落点，AI 报告数据源）';

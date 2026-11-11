@@ -3,10 +3,12 @@ package com.bigcenter;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /** 开发者成长平台（端口 8085）：学习体系总装厂，各功能包按 java-core 教学篇目对号入座 */
 @SpringBootApplication
 @MapperScan("com.bigcenter.**.mapper")
+@EnableScheduling   // HeatDecayJob 热榜衰减定时任务（community 模式总装）
 public class BigCenterApplication {
 
     public static void main(String[] args) {
