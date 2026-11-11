@@ -43,6 +43,7 @@
   面试前：java-core/面试速查手册 + 简历项目话术 + 面试反问与Offer沟通
   安全补强：java-core/19-登录态与接口安全（两个项目登录态的生产升级地图）
   事故演练：java-core/20-线上事故复盘集（死锁/内存/变慢三条故事线各讲一遍）
+  总装：big-center（任务书 big-center-PLAN.md——全部知识点融合成一个完整大项目）
 ```
 
 ## 目录索引
@@ -55,6 +56,7 @@
 | `stage7-AI应用开发/` | LLM全景/Spring AI流式/RAG/RAG进阶/AI工程化/AI工作流与Agent/MCP/AI安全评测/**微调选型(LoRA)/多模态** | [README](stage7-AI应用开发/README.md) |
 | `community/` | **总毕业项目**（四件套联动的社区论坛） | [README](community/README.md) |
 | `learn-center/` | **终极整合项目**：在线学习平台（MyBatis-Plus + 限量抢课秒杀 + 超时取消延迟链 + 签到/榜单/UV + 刷题错题本） | [README](learn-center/README.md) |
+| `big-center/` | **总装项目**：开发者成长平台——把全体系知识点（短链/扫码登录/限流/点赞/红包/推送/JWT/分布式ID/设计模式）融合成一个完整大项目 | [任务书](big-center-PLAN.md) |
 | `java-core/` | Java 后端核心 50+ 篇（并发/JVM/MySQL/Spring/微服务/设计模式/网络/Git/**系统设计 7 题/接口设计/日志规范/OS 基础/登录态与接口安全/K8s 入门/线上事故复盘集**）+ **面试速查手册** + **模拟面试追问链** + **简历项目话术** + **面试反问与Offer沟通** | [README](java-core/README.md) |
 | `diagrams/` | 23 个交互示意图（🐣 生活比喻版 + 🔧 技术版） | [README](diagrams/README.md) |
 | `Vue/` | 前端三件套学习笔记（HTML/JavaScript/Vue + 配套实操 html） | [index.html](Vue/index.html) |
