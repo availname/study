@@ -2,6 +2,7 @@ package com.bigcenter.pay;
 
 import com.bigcenter.auth.UserContext;
 import com.bigcenter.common.ApiResponse;
+import com.bigcenter.rate.RateLimit;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -19,7 +20,8 @@ public class PayController {
         this.mockChannel = mockChannel;
     }
 
-    /** 创建支付单（金额单位：分——15 篇铁律：钱上不允许 double） */
+    /** 创建支付单（金额单位：分——15 篇铁律：钱上不允许 double；限流防恶意刷单） */
+    @RateLimit(limit = 10, windowMs = 60_000)
     @PostMapping("/order")
     public ApiResponse<Map<String, Object>> create(@RequestParam String channelCode,
                                                    @RequestParam long amountFen,

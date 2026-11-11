@@ -1,6 +1,7 @@
 package com.bigcenter.auth;
 
 import com.bigcenter.common.ApiResponse;
+import com.bigcenter.rate.RateLimit;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -21,6 +22,8 @@ public class AuthController {
         return ApiResponse.ok(authService.register(username, password));
     }
 
+    /** 登录限流（防撞库爆破：每用户/IP 每分钟最多 5 次尝试） */
+    @RateLimit(limit = 5, windowMs = 60_000)
     @PostMapping("/login")
     public ApiResponse<Map<String, Object>> login(@RequestParam String username, @RequestParam String password) {
         return ApiResponse.ok(authService.login(username, password));

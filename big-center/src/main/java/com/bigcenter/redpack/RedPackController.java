@@ -2,6 +2,7 @@ package com.bigcenter.redpack;
 
 import com.bigcenter.auth.UserContext;
 import com.bigcenter.common.ApiResponse;
+import com.bigcenter.rate.RateLimit;
 import com.bigcenter.redpack.entity.RedPackDetail;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +27,8 @@ public class RedPackController {
         return ApiResponse.ok(Map.of("packId", id));
     }
 
-    /** 抢红包 */
+    /** 抢红包（万人并发——细限到人：每人每分钟最多 30 次抢） */
+    @RateLimit(limit = 30, windowMs = 60_000)
     @PostMapping("/{packId}/grab")
     public ApiResponse<Map<String, Object>> grab(@PathVariable long packId) {
         Long amount = service.grab(packId, UserContext.get());

@@ -39,6 +39,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
+        <!-- AOP：@RateLimit 限流切面（java-core/12 题三） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
         <!-- MyBatis-Plus（Boot3 starter）：与 learn-center/mq-mall 同栈 -->
         <dependency>
             <groupId>com.baomidou</groupId>
