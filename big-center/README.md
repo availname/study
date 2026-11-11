@@ -24,7 +24,7 @@ big-center (8085)
 | 分布式 ID（雪花，时钟回拨处理） | [java-core/11-分布式ID](../java-core/) | ✅ `common/Ids` |
 | 接口规范（ApiResponse/错误码分段） | [java-core/16-接口设计](../java-core/) | ✅ `common/` |
 | 日志规范（MDC traceId/六要素） | [java-core/17-日志规范](../java-core/) | ✅ `config/TraceIdFilter` |
-| JWT 登录（双 token/黑名单） | java-core/19 | ⬜ |
+| JWT 登录（双 token/黑名单） | [java-core/19-登录态与接口安全](../java-core/19-登录态与接口安全.md) | ✅ `auth/`（JwtService 双 token + BCrypt + 黑名单 + refresh 旋转；`JwtAuthInterceptor` 与 learn-center Redis token 拦截器同构，差异只在"验签解析"替代"Redis 查 userId"） |
 | 短链接服务（发号/302/布隆） | java-core/12 题一 | ⬜ |
 | 支付中心（状态机 CAS/回调幂等） | java-core/15 | ⬜ |
 | 抢红包（二倍均值/TTL+DLX） | java-core/14 题二 | ⬜ |
@@ -41,7 +41,7 @@ big-center (8085)
 com.bigcenter
 ├── common      ApiResponse/ErrorCode/Ids/全局异常（规范地基，16/17 篇吃狗粮）
 ├── config      WebConfig/TraceIdFilter（第 2 步起接入 JWT 拦截器）
-├── auth        JWT 认证（第 2 步）
+├── auth        JWT 认证：JwtService（access 15min 验签 + refresh 7d Redis 撤销 + 黑名单）/AuthService（BCrypt）/JwtAuthInterceptor（三件套：校验-ThreadLocal-清理）/UserContext
 ├── shortlink   短链（第 3 步）
 ├── pay         支付中心（第 4 步）
 ├── redpack     红包（第 5 步）

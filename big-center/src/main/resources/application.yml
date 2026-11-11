@@ -45,6 +45,8 @@ mybatis-plus:
 
 big-center:
   worker-id: 1        # 雪花机器 ID：多实例部署时按实例区分（0-1023）
+  jwt:
+    secret: "big-center-dev-jwt-secret-key-32bytes-min!"   # 教学用固定密钥；生产换环境变量 + RS256
 
 logging:
   pattern:
