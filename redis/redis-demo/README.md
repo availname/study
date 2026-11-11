@@ -38,6 +38,16 @@ mvn spring-boot:run             # 应用 @ localhost:8081
 - `/cache/product` 互斥锁重建 = stage3/01 击穿方案 1 的可运行实现
 - `/lock` 手写版的三要点（NX EX / Lua 校验释放 / 续期）在生产中用 Redisson 的 `lock()/tryLock()` 一行替代
 
+## 单元测试（无 Redis 也能跑）
+
+```bash
+mvn test    # 6 个用例，纯 Mockito 单测，不依赖任何容器
+```
+
+`SeckillLogicTest`（stage4/01）：用 Mock 模拟 Redis 键值/集合行为，把 **Lua 脚本的决策语义**固定下来——正常扣减、售罄拦截、未初始化兜底、库存 1 时恰好一人成功（不超卖）、一人一单拦截、边界 5 人抢 3 库存。真实原子性由 Redis 单线程保证（教学演示接口压测验证），单测钉住的是"返回码语义"不被改坏。
+
+**测试技巧沉淀**：`Map<Long,String>.get(1001)` 与 `get(1001L)` 是两个不同的 key——`Long` 装箱必须显式 `L`，这是 [踩坑实录坑二](../../mq/踩坑实录-完整复盘.md)（幂等键撞号）的"箱内陷阱"近亲。
+
 ## 教学简化点
 
 | demo 里 | 生产里 |
