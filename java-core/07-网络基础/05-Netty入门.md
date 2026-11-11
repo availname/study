@@ -120,4 +120,4 @@ A: 四种内置解码器——固定长度/分隔符/行/长度字段（LengthFi
 
 ---
 
-**下一篇**：[06-AI工作流与Agent](06-AI工作流与Agent.md)——五个工作流模式。
+**下一篇**：回 [07-网络基础 README](README.md) · 延伸：[06-AI工作流与Agent](../stage7-AI应用开发/06-AI工作流与Agent.md)（Agent 的工具编排与 Netty Pipeline 思想同源——都是"事件沿链传递，每节点可处理/可放行"）。
