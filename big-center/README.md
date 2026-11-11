@@ -30,7 +30,7 @@ big-center (8085)
 | 抢红包（二倍均值/TTL+DLX） | [java-core/14-系统设计进阶三题](../java-core/14-系统设计进阶三题.md) 题二 | ✅ `redpack/`（二倍均值预拆+LPUSH 重活放写少侧；SADD 防重+LPOP 原子认领不超发不重复、没抢到退回名单；明细 MQ 削峰落库；24h TTL+CAS 状态机过期退款、CAS 输方幂等） |
 | 点赞系统（Lua 原子/MQ 刷库） | [java-core/14-系统设计进阶三题](../java-core/14-系统设计进阶三题.md) 题一 | ✅ `like/`（Set 判重+INCR 计数 Lua 原子化 `lua/like.lua`、`unlike.lua`；MySQL 只异步归档） |
 | 消息推送（SSE+离线落库） | java-core/14 题三 | ✅ `push/`（三通道：SSE 在线直推→落库→拉取兜底；Redis 在线路由；未读数=最新 ID−已读位点 O(1)） |
-| 扫码登录（uuid 状态机） | java-core/12 题二 | ⬜ |
+| 扫码登录（uuid 状态机） | [java-core/12-系统设计三题](../java-core/12-系统设计三题.md) 题二 | ✅ `auth/qrcode/`（uuid 状态机 WAITING→SCANNED→CONFIRMED 条件推进（setIfPresent CAS）、TTL 5min 防重放、确认人=扫码人防越权、token 一次性签发即清理、PC 轮询接口） |
 | 限流器（Lua 滑动窗口+AOP） | java-core/12 题三 | ⬜ |
 | 设计模式实战（责任链/策略/状态机/门面） | java-core/06 | ⬜ |
 | java-core-lab 实验室 | java-core/01-05/06/08 | ⬜ |
