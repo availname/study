@@ -39,7 +39,7 @@ D:\JavaSpace\study\
 | 🎯 | [18-操作系统基础](18-操作系统基础.md) | ✅ | 进程线程/用户态内核态/虚拟内存——收拢线程池、锁升级、PageCache、零拷贝、epoll 的 OS 本体 |
 | 🎯 | [19-登录态与接口安全](19-登录态与接口安全.md) | ✅ | 认证 vs 授权/三种登录态方案/JWT 登出难题/BCrypt/越权与重放（learn-center 拦截器鉴权的生产升级地图） |
 | 🎯 | [20-线上事故复盘集](20-线上事故复盘集.md) | ✅ | MySQL 死锁+长事务/Redis 内存淘汰事故/接口变慢排查——三条"从告警到修复"完整故事线（踩坑实录的运维期续集） |
-| ★★ | [09-测试与MyBatis](09-测试与MyBatis/README.md) | ✅ 完整 3 篇 | JUnit5+Mockito / MyBatis-Plus / 实战复盘 | community 的 Testcontainers 回归测试；learn-center+community 28 用例落地 |
+| ★★ | [09-测试与MyBatis](09-测试与MyBatis/README.md) | ✅ 完整 3 篇 | JUnit5+Mockito / MyBatis-Plus / 实战复盘 | community 的 Testcontainers 回归测试；learn-center+community+redis-demo 41 用例落地（无 Docker 全绿） |
 
 ## 使用方法
 

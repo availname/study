@@ -40,7 +40,7 @@ cd learn-center && mvn spring-boot:run    # 应用 @ localhost:8084，建表自�
 ## 单元测试（无 Docker 也能跑）
 
 ```bash
-mvn test    # 17 个用例，纯 Mockito 单测，不依赖任何容器/中间件
+mvn test    # 21 个用例，纯 Mockito 单测，不依赖任何容器/中间件
 ```
 
 | 测试类 | 固定住的行为 | 对应教学 |
@@ -48,6 +48,7 @@ mvn test    # 17 个用例，纯 Mockito 单测，不依赖任何容器/中间�
 | `IdsTest` | 简化雪花同毫秒不撞号、严格递增（幂等防误杀的前提） | 踩坑实录坑二 |
 | `AiQuestionGeneratorTest` | JSON 围栏剥离 / 标题去重 / 难度钳制 1~3 / 解析失败兜底 BizException | stage7/02 结构化输出、stage7/04 降级 |
 | `EnrollConsumersTest` | 建单→扣名额→延迟取消消息；重投幂等跳过；CAS 取消失败不回补 | mq stage3 幂等、stage4 延迟链 |
+| `EnrollLockTest` | 抢锁→Lua→发 MQ 全链；锁被占快速失败；Lua 拦截不发 MQ；isHeldByCurrentThread 防误删 | r-stage3/03 分布式锁 |
 | `LearningToolsTest` | Agent 三工具的组装/映射/缺省值兜底（工具只读、身份注入） | stage7/06 Agent Tool Calling |
 
 **测试技巧沉淀**（09-测试与MyBatis 的实操版）：Mockito mock 具体类（JdbcTemplate/RedisTemplate）；MyBatis-Plus `LambdaQueryWrapper` 在纯单测中需 `TableInfoHelper.initTableInfo` 注册实体元数据；MP 3.5.7 的 `insert` 有 `T`/`Collection<T>` 两个重载，verify 时要用 `ArgumentMatchers.<T>any()` 消歧。

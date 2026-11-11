@@ -17,4 +17,4 @@
 
 community 的 [CommunityIntegrationTest](../../community/src/test/java/com/example/community/CommunityIntegrationTest.java) 是 stage6/07 的落地：真实 MySQL/Redis 容器跑 3 个回归用例（SETBIT 语义/消息表生命周期/幂等两层），`disabledWithoutDocker` 无 Docker 自动跳过。
 
-**单元测试也已落地**（03 篇的素材）：learn-center `mvn test` 17 例、community 11 例——两个项目 README 各有"用例 ↔ 教学章节"映射表。
+**单元测试也已落地**（03 篇的素材）：learn-center 21 例、community 11 例 + 3 集成、redis-demo 6 例——三个项目 README 各有"用例 ↔ 教学章节"映射表。
