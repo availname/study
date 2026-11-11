@@ -33,11 +33,14 @@ public class PostService {
     private final PostMapper postMapper;
     private final RabbitTemplate rabbit;
     private final StringRedisTemplate redis;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
 
-    public PostService(PostMapper postMapper, RabbitTemplate rabbit, StringRedisTemplate redis) {
+    public PostService(PostMapper postMapper, RabbitTemplate rabbit, StringRedisTemplate redis,
+                       org.springframework.jdbc.core.JdbcTemplate jdbc) {
         this.postMapper = postMapper;
         this.rabbit = rabbit;
         this.redis = redis;
+        this.jdbc = jdbc;
     }
 
     /** 发帖：落库待审 + 发审核消息（MQ 管道模式——审核耗时隔离在消费者侧） */
@@ -72,5 +75,35 @@ public class PostService {
     public void onApproved(long postId) {
         redis.opsForZSet().add(HOT_KEY, String.valueOf(postId), 10.0);
         log.info("[热榜] 帖子过审入榜 postId={}", postId);
+    }
+
+    /**
+     * 人工审核（community AuditConsumer.humanAudit 总装版）：
+     * 通过 = 从 HUMAN_AUDIT 推进（CAS 期望状态必须匹配来源！）走完整发布链；
+     * 拒绝 = HUMAN_AUDIT → REJECTED。卡点无人处理的问题由此接口闭环。
+     */
+    public void humanAudit(long postId, boolean pass) {
+        Post post = get(postId);
+        if (pass) {
+            approveFrom(postId, post.getAuthorId(), Post.HUMAN_AUDIT);
+        } else {
+            postMapper.casStatus(postId, Post.HUMAN_AUDIT, Post.REJECTED, "人工审核：不通过");
+            log.info("[人工审核] 拒绝 postId={}", postId);
+        }
+    }
+
+    /** 过审发布链：CAS 推进 + 热榜入榜 + 积分奖励（AuditConsumer.approve 与本方法共用） */
+    public void approveFrom(long postId, long authorId, int fromStatus) {
+        if (postMapper.casStatus(postId, fromStatus, Post.APPROVED, null) == 0) {
+            log.info("[审核] 状态不符合预期({}→{})，跳过 postId={}", fromStatus, Post.APPROVED, postId);
+            return;
+        }
+        onApproved(postId);
+        try {
+            jdbc.update("INSERT INTO t_points_log (user_id, points, reason, message_id) VALUES (?, ?, '发帖奖励', ?)",
+                    authorId, 10, "post-reward-" + postId);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            log.info("[积分] 幂等拦截（已发过）postId={}", postId);
+        }
     }
 }

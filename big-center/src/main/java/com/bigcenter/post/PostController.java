@@ -36,4 +36,11 @@ public class PostController {
     public ApiResponse<List<Long>> hot(@RequestParam(defaultValue = "10") int n) {
         return ApiResponse.ok(postService.hotTopN(n));
     }
+
+    /** 人工审核卡点处理（community humanAudit 总装版）：通过走完整发布链，拒绝 CAS 到 REJECTED */
+    @PostMapping("/{id}/audit")
+    public ApiResponse<Map<String, Object>> humanAudit(@PathVariable long id, @RequestParam boolean pass) {
+        postService.humanAudit(id, pass);
+        return ApiResponse.ok(Map.of("postId", id, "结果", pass ? "通过并发布" : "拒绝"));
+    }
 }

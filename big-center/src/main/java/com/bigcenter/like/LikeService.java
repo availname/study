@@ -92,4 +92,25 @@ public class LikeService {
             throw e;
         }
     }
+
+    /**
+     * 定时对账（community CounterFlushJob / 支付对账思想总装）：
+     * 以明细账 t_like_archive 的 SUM(delta) 为准，修正 Redis 计数漂移（刷库丢消息/重复的兜底）。
+     * 与 set 明细一致性：Set 大小是"当前点过的人数"，计数=SUM(delta)（含取消的 -1）。
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 600_000)
+    public void reconcileCounts() {
+        // 取有归档记录的目标（教学简化：全表聚合；量大时分页/增量水位，见 mq-mall 对账篇）
+        jdbc.query("SELECT target_id, COALESCE(SUM(delta),0) AS total FROM t_like_archive GROUP BY target_id",
+                rs -> {
+                    long targetId = rs.getLong("target_id");
+                    long truth = rs.getLong("total");
+                    String cnt = redis.opsForValue().get(CNT_PREFIX + targetId);
+                    long current = cnt == null ? 0 : Long.parseLong(cnt);
+                    if (current != truth) {
+                        redis.opsForValue().set(CNT_PREFIX + targetId, String.valueOf(truth));
+                        log.warn("[点赞对账] 计数修正 targetId={} redis={} 明细真相={}", targetId, current, truth);
+                    }
+                });
+    }
 }

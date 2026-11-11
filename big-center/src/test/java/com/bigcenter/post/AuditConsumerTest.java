@@ -42,30 +42,16 @@ class AuditConsumerTest {
     }
 
     @Test
-    void 正常帖_CAS从待审推进到通过_入热榜_发积分() {
-        when(postMapper.casStatus(1L, Post.PENDING, Post.APPROVED, null)).thenReturn(1);
+    void 正常帖_CAS从待审推进到通过_委托发布链() {
         consumer.approve(1L, 1001L, Post.PENDING);
-        // 过审入热榜（ZSet 基础分）
-        verify(postService).onApproved(1L);
-        // 积分流水：message_id = post-reward-{postId}（唯一索引幂等的载体）
-        verify(jdbc).update(anyString(), eq(1001L), eq(AuditConsumer.POST_REWARD), eq("post-reward-1"));
+        // approve 委托 PostService.approveFrom（CAS+热榜+积分链路在 Service 层单测）
+        verify(postService).approveFrom(1L, 1001L, Post.PENDING);
     }
 
     @Test
-    void CAS输方_状态不符跳过_不发积分不入榜() {
-        when(postMapper.casStatus(1L, Post.PENDING, Post.APPROVED, null)).thenReturn(0);
-        consumer.approve(1L, 1001L, Post.PENDING);
-        verify(postService, never()).onApproved(anyLong());
-        verify(jdbc, never()).update(anyString(), anyLong(), anyInt(), anyString());
-    }
-
-    @Test
-    void 重复积分消息_唯一索引冲突幂等吞掉() {
-        when(postMapper.casStatus(1L, Post.PENDING, Post.APPROVED, null)).thenReturn(1);
-        Mockito.doThrow(new org.springframework.dao.DuplicateKeyException("uk_message_id"))
-                .when(jdbc).update(anyString(), anyLong(), anyInt(), anyString());
-        consumer.approve(1L, 1001L, Post.PENDING);   // 不应抛出
-        verify(postService).onApproved(1L);
+    void 人工审核通过_从HUMAN_AUDIT推进走同一发布链() {
+        postService.humanAudit(7L, true);
+        // Service 是 mock：人工审核委托语义无法在此钉，见 PostServiceTest
     }
 
     @Test

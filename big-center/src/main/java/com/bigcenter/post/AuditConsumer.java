@@ -56,20 +56,10 @@ public class AuditConsumer {
         }
     }
 
-    /** 审核通过：CAS 状态推进（期望状态必须匹配来源）+ 热榜入榜 + 积分奖励（唯一索引幂等） */
+    /** 审核通过：委托 PostService.approveFrom（CAS 推进+热榜入榜+积分奖励，人工审核共用同一链路） */
     public void approve(long postId, long authorId, int fromStatus) {
-        if (casOrSkip(postId, fromStatus, Post.APPROVED, null) == 0) {
-            log.info("[审核] 状态不符合预期，跳过 postId={}", postId);
-            return;
-        }
-        postService.onApproved(postId);   // ZSet 热榜入榜（HeatDecayJob 负责衰减）
-        try {
-            jdbc.update("INSERT INTO t_points_log (user_id, points, reason, message_id) VALUES (?, ?, '发帖奖励', ?)",
-                    authorId, POST_REWARD, "post-reward-" + postId);
-        } catch (org.springframework.dao.DuplicateKeyException e) {
-            log.info("[积分] 幂等拦截（已发过）postId={}", postId);
-        }
-        log.info("[审核] 通过 postId={} 作者={} 奖励{}积分", postId, authorId, POST_REWARD);
+        postService.approveFrom(postId, authorId, fromStatus);
+        log.info("[审核] 通过链路执行完成 postId={} 作者={}", postId, authorId);
     }
 
     private int casOrSkip(long postId, int expect, int next, String reason) {

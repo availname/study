@@ -44,10 +44,10 @@ public class AiReportService {
         return c == null ? 0 : c;
     }
 
-    /** 发出点赞数：Redis Set 规模聚合简化为遍历点赞目标（教学演示：真实实现按用户维度建反向 Set） */
+    /** 发出点赞数：按明细 delta 聚合（含取消的 -1，抵消后是"净点赞数"） */
     private long likeGiven(long userId) {
         Long c = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM t_like_archive WHERE user_id = ?", Long.class, userId);
+                "SELECT COALESCE(SUM(delta),0) FROM t_like_archive WHERE user_id = ?", Long.class, userId);
         return c == null ? 0 : c;
     }
 }

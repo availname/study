@@ -63,10 +63,11 @@ flowchart LR
 | 扫码登录（uuid 状态机） | java-core/12 题二 | ✅ `auth/qrcode/`（uuid 状态机 WAITING→SCANNED→CONFIRMED 条件推进（setIfPresent CAS）、TTL 5min 防重放、确认人=扫码人防越权、token 一次性签发即清理、PC 轮询接口） |
 | 限流器（Lua 滑动窗口+AOP） | java-core/12 题三 | ✅ `rate/`（ZSET 时间戳滑动窗口 Lua 原子 `lua/rate_limit.lua`、@RateLimit 注解 AOP 细限到人、超限 5001 快速失败；已打到登录（防撞库 5/min）/抢红包（30/min）/下单（10/min）） |
 | 秒杀四层漏斗（限量课抢购） | [learn-center/](../learn-center/) EnrollController+lua（mq-mall 秒杀篇依据） | ✅ `seckill/`（Lua 原子预扣 `lua/seckill.lua`（判重+扣名额+登记三步原子）→ MQ 异步建单削峰（`SeckillConsumer`）→ DB 唯一索引幂等 + `WHERE enrolled<quota` 防超卖兜底；Redis/DB 两道防线 fencing token 思想） |
-| 帖子审核管道（AI 三分支） | [community/](../community/) AuditService（MQ 管道模式） | ✅ `post/`（发帖落库待审 + MQ 进管道；AI 审核：BLOCK 拒绝/HUMAN 人工卡点/其余过审；CAS 状态机推进（期望状态必须匹配来源）、积分唯一索引幂等 `t_points_log.message_id`） |
+| 帖子审核管道（AI 三分支） | [community/](../community/) AuditService（MQ 管道模式） | ✅ `post/`（发帖落库待审 + MQ 进管道；AI 审核：BLOCK 拒绝/HUMAN 人工卡点/其余过审；CAS 状态机推进（期望状态必须匹配来源）、积分唯一索引幂等 `t_points_log.message_id`；人工审核 `POST /api/post/{id}/audit` 闭环卡点，与 AI 过审共用 `approveFrom` 发布链） |
 | 热榜时间衰减 | [community/](../community/) HeatDecayJob（stage5/05 热搜同款） | ✅ `post/HeatDecayJob`（ZSet 热度榜每小时 ×0.98，低于 0.5 出榜——旧帖自然沉底不删除） |
 | AI 学习报告（Mock/Real 双实现） | [learn-center/](../learn-center/) ai/ 包（stage7/04 防幻觉分工） | ✅ `ai/`（ChatPort 策略接口 + `@ConditionalOnProperty` 切换：数字由系统聚合（秒杀/帖子/积分/点赞真实 SQL），措辞由模型生成——事实系统给，表述 AI 编） |
 | 可靠消息全家桶 | [mq-mall/](../mq/mq-mall/) messaging/（stage3/01-05） | ✅ `messaging/`（ReliableMessagePublisher 本地消息表（事务内原子+afterCommit 发送）/Confirm+Return 回调联动（RabbitInfraConfig）/SendRetryJob 补偿指数退避+超限死信/MessageDedupService 消费幂等两层防线/DeadLetterConsumer 死信落库人工兜底；业务接入：点赞刷库走 sendFast+幂等归档、红包 24h TTL+DLX 延迟退款链走消费幂等） |
+| 点赞定时对账 | [mq-mall/](../mq/mq-mall/) 对账思想（15 篇三单对账同源） | ✅ `like/reconcileCounts`（每 10min 以 `t_like_archive` 明细 SUM(delta) 为准修正 Redis 计数漂移——刷库丢消息/重复的最终兜底，对账思想复用） |
 | 越权防护（where user_id） | java-core/19 第五节 | ✅ `pay/PaymentService.findByNo`（数据权限进查询条件，天然不越权）；推送 send 的 from 取登录态 |
 | 设计模式实战（责任链/策略/状态机/门面） | [java-core/06-设计模式](../java-core/06-设计模式/) 五篇 | ✅ 落在业务里：策略+门面 `pay/PaymentFacade`、状态机 `pay/casPaid` 与 `redpack/casStatus`、责任链 `PaymentService.handleCallback` 验签→金额→幂等链；可运行示例 `lab/patterns/` |
 | java-core-lab 实验室 | [00 基石](../java-core/00-Java语言基石/) / [01 并发](../java-core/01-并发编程/) / [02 JVM](../java-core/02-JVM虚拟机/) / [06 设计模式](../java-core/06-设计模式/) | ✅ `lab/`（basics：HashMap 扩容反射/泛型擦除+注解扫描/Stream 分组/String 相等性；concurrent：线程六状态/锁升级/CAS+ABA 版本号/volatile+DCL/线程池七参数/AQS 自实现锁/CHM+ThreadLocal 泄漏/虚拟线程衔接；jvm：内存区/Young GC/可恢复 OOM/GC 参数模板） |
@@ -116,7 +117,7 @@ mvn spring-boot:run
 ## 测试
 
 ```bash
-mvn test    # 86 例纯 Mockito 单测，无 Docker 全绿（学习体系铁律）
+mvn test    # 90 例纯 Mockito 单测，无 Docker 全绿（学习体系铁律）
 ```
 
 重点钉住的教学语义：Lua 判重计数原子（like）、CAS 输方分支（pay 竞态三分支）、双层幂等（回调唯一索引）、LPOP 不超发+名单退回（redpack）、状态机条件推进（qrcode setIfPresent）、Write Behind 阈值回写（shortlink）、秒杀预扣成功才发 MQ（seckill）、审核三分支+CAS 输方跳过+积分幂等（post/AuditConsumer）、热榜衰减出榜阈值（HeatDecayJob）、AI 报告数据进 prompt（ai/AiReportService）。
