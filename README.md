@@ -33,15 +33,16 @@
   redis/stage5-类型场景实战 （8 个类型场景）
   java-core/04-Spring核心   （IoC/AOP/事务失效八连）
   java-core/05-微服务全家桶 （Nacos/Feign/Gateway/Sentinel/Seata）
-  └─ 跑通 mq-mall 和 community 两个项目（README 有 API 玩法路线）
+  └─ 跑通 mq-mall、community、learn-center 三个项目（README 有 API 玩法路线）
 
 第 5 步：扩展与就业（持续）
   stage6-新技术专题         （虚拟线程/Spring AI/向量检索/OTel/CI/CDC）
   stage7-AI应用开发         （Spring AI/RAG进阶/AI工作流与Agent/MCP/AI安全/微调选型/多模态）
   redis/stage5-类型场景实战 / java-core/06-设计模式 / 07-网络基础
-  mq-mall + community 推 GitHub（配 GitHub Actions CI）
+  mq-mall + community + learn-center 推 GitHub（配 GitHub Actions CI）
   面试前：java-core/面试速查手册 + 简历项目话术 + 面试反问与Offer沟通
   安全补强：java-core/19-登录态与接口安全（两个项目登录态的生产升级地图）
+  事故演练：java-core/20-线上事故复盘集（死锁/内存/变慢三条故事线各讲一遍）
 ```
 
 ## 目录索引
@@ -121,13 +122,16 @@
 ## 环境速查
 
 ```bash
-# 基础设施（mq-mall 三件套 + redis 教学）
+# 基础设施（mq-mall 三件套 + redis 教学；learn-center 复用同一套）
 docker start mq-mall-mysql mq-mall-rabbitmq mq-mall-redis redis-learn
+# learn-center 首次运行前建库：
+docker exec mq-mall-mysql mysql -uroot -proot123 -e "CREATE DATABASE IF NOT EXISTS learn_center DEFAULT CHARSET utf8mb4"
 
-# 三个应用
+# 四个应用
 cd mq/mq-mall && mvn spring-boot:run        # 8090
 cd redis/redis-demo && mvn spring-boot:run  # 8081
 cd community && mvn spring-boot:run         # 8082
+cd learn-center && mvn spring-boot:run      # 8084
 ```
 
 | 端口 | 服务 |
