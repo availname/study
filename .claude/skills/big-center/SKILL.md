@@ -42,6 +42,7 @@ description: 执行 big-center 总装项目——把 study 教学体系全部知
 9. ✅ java-core-lab：并发/基石/设计模式/JVM 的 main 示例集（cfa9eca）
 10. ✅ 收尾：README 对号入座表 + 全量测试（0505e01）——66 例全绿
 11. ✅ 总装能力补齐（B 部分三项）：seckill 秒杀四层漏斗 / post 审核管道+热榜衰减 / ai Mock-Real 双实现——79 例全绿
+12. ✅ 可靠消息全家桶移植（mq-mall stage3）：messaging/ 四件套（本地消息表+Confirm+补偿+幂等两层+死信落库），点赞刷库/红包 TTL+DLX 延迟退款接入——86 例全绿
 
 中途中断后恢复：`git log --oneline` 看最后完成的步骤，从下一步继续。
 

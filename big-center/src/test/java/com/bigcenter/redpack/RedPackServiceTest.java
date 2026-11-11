@@ -57,7 +57,8 @@ class RedPackServiceTest {
             inv.getArgument(0, RedPack.class).setId(1L);
             return 1;
         });
-        service = new RedPackService(packMapper, detailMapper, redis);
+        service = new RedPackService(packMapper, detailMapper, redis,
+                Mockito.mock(org.springframework.amqp.rabbit.core.RabbitTemplate.class));
         UserContext.set(1001L);
     }
 

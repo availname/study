@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 抢红包服务（java-core/14 题二落地）：
@@ -35,11 +36,14 @@ public class RedPackService {
     private final RedPackMapper packMapper;
     private final RedPackDetailMapper detailMapper;
     private final StringRedisTemplate redis;
+    private final org.springframework.amqp.rabbit.core.RabbitTemplate rabbit;
 
-    public RedPackService(RedPackMapper packMapper, RedPackDetailMapper detailMapper, StringRedisTemplate redis) {
+    public RedPackService(RedPackMapper packMapper, RedPackDetailMapper detailMapper, StringRedisTemplate redis,
+                          org.springframework.amqp.rabbit.core.RabbitTemplate rabbit) {
         this.packMapper = packMapper;
         this.detailMapper = detailMapper;
         this.redis = redis;
+        this.rabbit = rabbit;
     }
 
     /** 发红包：预拆 N 份 + LPUSH + TTL 24h（延迟退款由延迟消息消费者调 refundIfExpired） */
@@ -58,6 +62,9 @@ public class RedPackService {
         redis.opsForList().rightPushAll(pkgKey, parts.stream().map(String::valueOf).toList());
         redis.expire(pkgKey, PKG_TTL);
         redis.opsForValue().set(COUNT_PREFIX + pack.getId(), String.valueOf(count), PKG_TTL);
+        // 发 24h TTL 延迟消息（无消费者队列，到期死信转发退款队列——TTL+DLX 延迟链）
+        rabbit.convertAndSend("", "bc.redpack.delay.queue",
+                Map.of("packId", pack.getId()));
         return pack.getId();
     }
 

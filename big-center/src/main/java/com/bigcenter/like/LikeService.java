@@ -22,11 +22,20 @@ public class LikeService {
     static final String CNT_PREFIX = "bc:like:cnt:";
 
     private final StringRedisTemplate redis;
+    private final com.bigcenter.messaging.MessageDedupService dedup;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private final com.bigcenter.messaging.ReliableMessagePublisher publisher;
     private final DefaultRedisScript<Long> likeScript;
     private final DefaultRedisScript<Long> unlikeScript;
 
-    public LikeService(StringRedisTemplate redis) {
+    public LikeService(StringRedisTemplate redis,
+                       com.bigcenter.messaging.MessageDedupService dedup,
+                       org.springframework.jdbc.core.JdbcTemplate jdbc,
+                       com.bigcenter.messaging.ReliableMessagePublisher publisher) {
         this.redis = redis;
+        this.dedup = dedup;
+        this.jdbc = jdbc;
+        this.publisher = publisher;
         likeScript = new DefaultRedisScript<>();
         likeScript.setScriptSource(new ResourceScriptSource(new ClassPathResource("lua/like.lua")));
         likeScript.setResultType(Long.class);
@@ -35,10 +44,15 @@ public class LikeService {
         unlikeScript.setResultType(Long.class);
     }
 
-    /** 点赞：1=成功；-1=已点过（幂等）。Lua 保证判重+计数原子——并发下不会重复计数 */
+    /** 点赞：1=成功；-1=已点过（幂等）。Lua 保证判重+计数原子——并发下不会重复计数；成功发 MQ 异步归档 */
     public long like(long targetId, long userId) {
         Long r = redis.execute(likeScript,
                 java.util.List.of(SET_PREFIX + targetId, CNT_PREFIX + targetId), String.valueOf(userId));
+        if (r != null && r == 1L) {
+            publisher.sendFast("bc.like", "like.flushed",
+                    java.util.Map.of("targetId", targetId, "userId", userId, "delta", 1,
+                            "messageId", "like-flush-" + targetId + "-" + userId));
+        }
         return r == null ? -1 : r;
     }
 
@@ -60,8 +74,22 @@ public class LikeService {
         return Boolean.TRUE.equals(redis.opsForSet().isMember(SET_PREFIX + targetId, String.valueOf(userId)));
     }
 
-    /** MQ 刷库消费者入口：异步归档（削峰）——批量攒 N 条或定时刷（消费者实现见 PushController 说明） */
-    public void onFlushQueue(long targetId, long delta) {
-        log.info("点赞刷库（MQ 异步归档）targetId={} delta={}", targetId, delta);
+    /**
+     * MQ 刷库消费者入口：异步归档到 t_like_archive（削峰）。
+     * 消费幂等两层防线（MessageDedupService）——Redis setnx 挡 99%，重投不重复归档。
+     */
+    public void onFlushQueue(long targetId, long userId, long delta, String messageId) {
+        if (!dedup.tryConsume("like-flush", messageId)) {
+            log.info("点赞刷库重复消息跳过 targetId={} messageId={}", targetId, messageId);
+            return;
+        }
+        try {
+            jdbc.update("INSERT INTO t_like_archive (target_id, user_id, delta) VALUES (?, ?, ?)",
+                    targetId, userId, delta);
+            log.info("点赞刷库（MQ 异步归档）targetId={} userId={} delta={}", targetId, userId, delta);
+        } catch (Exception e) {
+            dedup.fail(messageId);
+            throw e;
+        }
     }
 }

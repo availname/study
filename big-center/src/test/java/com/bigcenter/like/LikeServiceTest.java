@@ -34,7 +34,10 @@ class LikeServiceTest {
         // 链式 mock：先固定各 ops 返回同一实例
         when(redis.opsForValue()).thenReturn(valueOps);
         when(redis.opsForSet()).thenReturn(setOps);
-        service = new LikeService(redis);
+        service = new LikeService(redis,
+                Mockito.mock(com.bigcenter.messaging.MessageDedupService.class),
+                Mockito.mock(org.springframework.jdbc.core.JdbcTemplate.class),
+                Mockito.mock(com.bigcenter.messaging.ReliableMessagePublisher.class));
     }
 
     @Test
