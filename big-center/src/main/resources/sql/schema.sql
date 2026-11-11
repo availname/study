@@ -64,3 +64,13 @@ CREATE TABLE IF NOT EXISTS t_red_pack_detail (
     UNIQUE KEY uk_pack_user (pack_id, user_id) COMMENT 'MQ 重复消费幂等',
     KEY idx_pack (pack_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='抢红包明细（MQ 异步落库）';
+
+CREATE TABLE IF NOT EXISTS t_push_message (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '消息 ID 单调递增——位点差值算未读',
+    to_user_id BIGINT      NOT NULL,
+    from_user_id BIGINT    NOT NULL,
+    title      VARCHAR(128) NOT NULL,
+    content    VARCHAR(1024) NOT NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    KEY idx_to_user (to_user_id, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站内消息（离线落库+拉取兜底；公告走读扩散不落表）';
