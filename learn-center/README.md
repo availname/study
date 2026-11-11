@@ -52,6 +52,8 @@ mvn test    # 17 个用例，纯 Mockito 单测，不依赖任何容器/中间�
 
 **测试技巧沉淀**（09-测试与MyBatis 的实操版）：Mockito mock 具体类（JdbcTemplate/RedisTemplate）；MyBatis-Plus `LambdaQueryWrapper` 在纯单测中需 `TableInfoHelper.initTableInfo` 注册实体元数据；MP 3.5.7 的 `insert` 有 `T`/`Collection<T>` 两个重载，verify 时要用 `ArgumentMatchers.<T>any()` 消歧。
 
+**CI**：GitHub Actions workflow（`.github/workflows/ci.yml`）——push/PR 自动 `mvn verify` + 上传 surefire 报告（同 mq-mall 的配置，[stage6/05](../stage6-新技术专题/05-GitHubActions-CICD.md)）。
+
 ## API 路线
 
 ```bash

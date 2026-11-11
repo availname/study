@@ -56,10 +56,11 @@
 | `learn-center/` | **终极整合项目**：在线学习平台（MyBatis-Plus + 限量抢课秒杀 + 超时取消延迟链 + 签到/榜单/UV + 刷题错题本） | [README](learn-center/README.md) |
 | `java-core/` | Java 后端核心 50+ 篇（并发/JVM/MySQL/Spring/微服务/设计模式/网络/Git/**系统设计 7 题/接口设计/日志规范/OS 基础/登录态与接口安全/K8s 入门/线上事故复盘集**）+ **面试速查手册** + **模拟面试追问链** + **简历项目话术** + **面试反问与Offer沟通** | [README](java-core/README.md) |
 | `diagrams/` | 23 个交互示意图（🐣 生活比喻版 + 🔧 技术版） | [README](diagrams/README.md) |
+| `Vue/` | 前端三件套学习笔记（HTML/JavaScript/Vue + 配套实操 html） | [index.html](Vue/index.html) |
 | `mq/踩坑实录-完整复盘.md` | 12 个真实坑（现象→排查→根因→修复→教训） | [直接看](mq/踩坑实录-完整复盘.md) |
 | `learn-center/README.md` | learn-center 运行/API/知识融合映射 | [直接看](learn-center/README.md) |
 | `java-core/面试速查手册.md` | 全部模块高频面试题 + 答题骨架 | [直接看](java-core/面试速查手册.md) |
-| `java-core/简历项目话术.md` | 两个项目怎么写进简历 + 面试追问应对 | [直接看](java-core/简历项目话术.md) |
+| `java-core/简历项目话术.md` | 三个项目怎么写进简历 + 面试追问应对 | [直接看](java-core/简历项目话术.md) |
 
 ## 交互示意图索引（🐣 生活比喻优先）
 
@@ -93,7 +94,7 @@
 
 **环境类**
 - [ ] Docker 起 mq-mall 三件套 + redis-learn，两个 demo 工程跑通
-- [ ] mq-mall / community 推上 GitHub，CI 绿勾
+- [ ] mq-mall / community / learn-center 推上 GitHub，CI 绿勾
 
 **mq 教程**
 - [ ] 五种工作模式 demo 全跑通；Confirm/Return/死信链路演练
@@ -106,11 +107,16 @@
 **java-core**
 - [ ] 并发八篇的 main 方法示例全部跑过
 - [ ] JVM 五篇 + Arthas 本机实操一遍
-- [ ] 面试速查手册过三遍，每题能口述 60 秒
+- [ ] 系统设计 7 题 + 支付收官全部能白板画图
+- [ ] 19 登录态安全：用 JWT 双 token 改造 learn-center 登录
+- [ ] 20 事故复盘三条故事线各讲一遍（死锁/内存/变慢）
+- [ ] 13 运维模块 + K8s 入门过一遍，compose 起过服务
+- [ ] 面试速查手册过三遍（14 节），每题能口述 60 秒
 
 **项目**
 - [ ] community 全 API 路线走通（README 十一步）
-- [ ] 两个项目各写一段简历描述（见简历话术）并能答出追问
+- [ ] learn-center 跑通：抢课→支付 CAS→打卡→榜单→错题本
+- [ ] 三个项目各写一段简历描述（见简历话术）并能答出追问
 
 ## 环境速查
 
