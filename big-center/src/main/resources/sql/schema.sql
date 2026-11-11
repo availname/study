@@ -9,3 +9,14 @@ CREATE TABLE IF NOT EXISTS t_user (
     created_at DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     UNIQUE KEY uk_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户（JWT 登录，第 2 步启用）';
+
+CREATE TABLE IF NOT EXISTS t_short_link (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    short_code  VARCHAR(16)  NOT NULL,
+    long_url    VARCHAR(2048) NOT NULL,
+    creator_id  BIGINT       NULL COMMENT '发号人（登录态 userId）',
+    click_count BIGINT       NOT NULL DEFAULT 0 COMMENT '点击数（Redis 累积阈值回写）',
+    created_at  DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    UNIQUE KEY uk_short_code (short_code),
+    UNIQUE KEY uk_long_url (long_url) COMMENT '同一长 URL 防重复发号'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='短链映射（java-core/12 题一）';

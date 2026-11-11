@@ -25,7 +25,7 @@ big-center (8085)
 | 接口规范（ApiResponse/错误码分段） | [java-core/16-接口设计](../java-core/) | ✅ `common/` |
 | 日志规范（MDC traceId/六要素） | [java-core/17-日志规范](../java-core/) | ✅ `config/TraceIdFilter` |
 | JWT 登录（双 token/黑名单） | [java-core/19-登录态与接口安全](../java-core/19-登录态与接口安全.md) | ✅ `auth/`（JwtService 双 token + BCrypt + 黑名单 + refresh 旋转；`JwtAuthInterceptor` 与 learn-center Redis token 拦截器同构，差异只在"验签解析"替代"Redis 查 userId"） |
-| 短链接服务（发号/302/布隆） | java-core/12 题一 | ⬜ |
+| 短链接服务（发号/302/布隆） | [java-core/12-系统设计三题](../java-core/12-系统设计三题.md) 题一 | ✅ `shortlink/`（雪花→Base62 发号无碰撞；302 可统计；布隆→Redis→库三层解析；INCR+阈值回写 Write Behind） |
 | 支付中心（状态机 CAS/回调幂等） | java-core/15 | ⬜ |
 | 抢红包（二倍均值/TTL+DLX） | java-core/14 题二 | ⬜ |
 | 点赞系统（Lua 原子/MQ 刷库） | java-core/14 题一 | ⬜ |
